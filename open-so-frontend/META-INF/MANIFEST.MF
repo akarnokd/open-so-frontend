@@ -1,0 +1,19 @@
+Manifest-Version: 1.0
+Class-Path: .
+Main-Class: hu.openso.frontend.QuestionsGUI
+
+Name: org/htmlparser/beans/StringBean.class
+Java-Bean: True
+
+Name: org/htmlparser/Parser.class
+Java-Bean: True
+
+Name: org/htmlparser/beans/HTMLLinkBean.class
+Java-Bean: True
+
+Name: org/htmlparser/beans/HTMLTextBean.class
+Java-Bean: True
+
+Name: org/htmlparser/beans/LinkBean.class
+Java-Bean: True
+

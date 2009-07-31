@@ -76,6 +76,7 @@ public class QuestionsGUI extends JFrame {
 	@Retention(RetentionPolicy.RUNTIME)
 	public @interface SaveValue { }
 	private static final long serialVersionUID = 5676803531378664660L;
+	static final String version = "0.3";
 	JTable table;
 	QuestionModel model;
 	JButton go;
@@ -100,7 +101,7 @@ public class QuestionsGUI extends JFrame {
 	Timer refreshTimer;
 	int refreshCounter;
 	static final int REFRESH_TIME = 30;
-
+	ImageIcon goImage;
 	@SaveValue
 	JCheckBox[] siteUrls;
 	@SaveValue
@@ -145,7 +146,7 @@ public class QuestionsGUI extends JFrame {
 		public int getRowCount() {
 			return questions.size();
 		}
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		SimpleDateFormat sdf = new SimpleDateFormat("'<html>'yyyy-MM-dd'<br>'HH:mm:ss");
 		@Override
 		public Object getValueAt(final int rowIndex, final int columnIndex) {
 			SummaryEntry se = questions.get(rowIndex);
@@ -329,7 +330,7 @@ public class QuestionsGUI extends JFrame {
         return table;
     }
 	public QuestionsGUI() {
-		super("Questions");
+		super("Open Stack Overflow Frontend v" + version + " - Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
 			@Override
@@ -349,6 +350,12 @@ public class QuestionsGUI extends JFrame {
 		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
 		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
 		siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
+		
+		try {
+			setIconImage(ImageIO.read(getClass().getResource("res/logo.png")));
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		
 		Container c = getContentPane();
 		GroupLayout gl = new GroupLayout(c);
@@ -375,7 +382,9 @@ public class QuestionsGUI extends JFrame {
 			}
 		});
 		JScrollPane scroll = new JScrollPane(table);
-		go = new JButton("Get First");
+		goImage = new ImageIcon(getClass().getResource("res/go.png"));
+		go = new JButton(goImage);
+		go.setToolTipText("Read the first page of the selected sites and subpages");
 		ActionListener doRetrieveAction = new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -412,14 +421,16 @@ public class QuestionsGUI extends JFrame {
 		
 		page = new JFormattedTextField(1);
 		page.setColumns(4);
-		more = new JButton("More");
+		more = new JButton(new ImageIcon(getClass().getResource("res/more.png")));
+		more.setToolTipText("Read the Nth page of the selected sites and subpages");
 		more.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				doGetMore();
 			}
 		});
-		clear = new JButton("Clear");
+		clear = new JButton(new ImageIcon(getClass().getResource("res/clear.png")));
+		clear.setToolTipText("Clears the entire list of questions");
 		clear.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -465,13 +476,13 @@ public class QuestionsGUI extends JFrame {
 		for (int i = 0; i < siteUrls.length / 2; i++) {
 			sg.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 			sg.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
-			sg.addComponent(tags[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg.addComponent(tags[i], 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 		}
 		SequentialGroup sg1 = gl.createSequentialGroup();
 		for (int i = siteUrls.length / 2; i < siteUrls.length; i++) {
 			sg1.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 			sg1.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
-			sg1.addComponent(tags[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg1.addComponent(tags[i], 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 		}
 		SequentialGroup sg2 = gl.createSequentialGroup();
 		sg2.addComponent(totalLabel);
@@ -602,6 +613,7 @@ public class QuestionsGUI extends JFrame {
 				setLocationRelativeTo(null);
 				initConfig();
 				doExcerptToggle();
+				doRefreshToggle();
 				setVisible(true);
 			}
 		});
@@ -610,6 +622,7 @@ public class QuestionsGUI extends JFrame {
 		for (SummaryEntry se : model.questions) {
 			se.markRead = true;
 		}
+		model.fireTableDataChanged();
 	}
 	protected void doRefreshCounter() {
 		refreshCounter--;
@@ -782,7 +795,7 @@ public class QuestionsGUI extends JFrame {
 						autoResizeColWidth(table, model);
 						adjusted = true;
 					}
-					go.setIcon(null);
+					go.setIcon(goImage);
 					go.setEnabled(true);
 					more.setEnabled(true);
 					// continue the refresh loop if it was selected
@@ -917,11 +930,34 @@ public class QuestionsGUI extends JFrame {
 					int j = Integer.parseInt(sortIndex);
 					drs.setSortKeys(Collections.singletonList(new SortKey(j, SortOrder.valueOf(sortKey))));
 				}
+				doLoadColumnWidths(p);
 			} finally {
 				in.close();
 			}
 		} catch (IOException ex) {
 			// ignore
+		}
+	}
+	private void doLoadColumnWidths(Properties p) {
+		boolean firstTime = true;
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			String s = p.getProperty("Column" + i);
+			if (s != null) {
+				if (firstTime) {
+					table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+					adjusted = true;
+					firstTime = false;
+				}
+				int w = Integer.parseInt(s);
+				adjusted = true;
+				table.getColumnModel().getColumn(i).setWidth(w);
+				table.getColumnModel().getColumn(i).setPreferredWidth(w);
+			}
+		}
+	}
+	private void doSaveColumnWidths(Properties p) {
+		for (int i = 0; i < model.getColumnCount(); i++) {
+			p.setProperty("Column" + i, Integer.toString(table.getColumnModel().getColumn(i).getWidth()));
 		}
 	}
 	/** Save the window state to configuration file. */
@@ -942,6 +978,7 @@ public class QuestionsGUI extends JFrame {
 				p.setProperty("SortKey", list.get(0).getSortOrder().name());
 				p.setProperty("SortIndex", Integer.toString(list.get(0).getColumn()));
 			}
+			doSaveColumnWidths(p);
 			try {
 				p.storeToXML(out, "");
 			} finally {

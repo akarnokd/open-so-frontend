@@ -20,6 +20,7 @@ import java.net.URL;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
 import javax.swing.GroupLayout;
@@ -48,6 +50,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.GroupLayout.Alignment;
+import javax.swing.GroupLayout.ParallelGroup;
+import javax.swing.GroupLayout.SequentialGroup;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
@@ -58,6 +62,32 @@ import javax.swing.table.TableColumn;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
+	JTable table;
+	QuestionModel model;
+	JButton go;
+	JFormattedTextField page;
+	ImageIcon rolling;
+	ImageIcon okay;
+	ImageIcon unknown;
+	ImageIcon wiki;
+	JComboBox sort;
+	JButton more;
+	JButton clear;
+	boolean adjusted;
+	JPopupMenu menu;
+	JCheckBox merge;
+	JLabel[] status;
+	JCheckBox excerpts;
+	JCheckBox refresh;
+	Timer refreshTimer;
+	int refreshCounter;
+	static final int REFRESH_TIME = 30;
+	JCheckBox[] siteUrls;
+	JTextField[] tags;
+	JLabel[] siteIconLabels;
+	AtomicInteger retrieveWip = new AtomicInteger(0);
+	JLabel totalLabel;
+	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
@@ -276,28 +306,6 @@ public class QuestionsGUI extends JFrame {
  
         return table;
     }
-	JTable table;
-	QuestionModel model;
-	JButton go;
-	JFormattedTextField page;
-	JComboBox url;
-	JTextField tags;
-	ImageIcon rolling;
-	ImageIcon okay;
-	ImageIcon unknown;
-	ImageIcon wiki;
-	JComboBox sort;
-	JButton more;
-	JButton clear;
-	boolean adjusted;
-	JPopupMenu menu;
-	JCheckBox merge;
-	JLabel status;
-	JCheckBox excerpts;
-	JCheckBox refresh;
-	Timer refreshTimer;
-	int refreshCounter;
-	static final int REFRESH_TIME = 30;
 	public QuestionsGUI() {
 		super("Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -353,14 +361,31 @@ public class QuestionsGUI extends JFrame {
 			}
 		};
 		go.addActionListener(doRetrieveAction);
-		url = new JComboBox(new String[] { 
-			"http://stackoverflow.com", 
-			"http://meta.stackoverflow.com",
-			"http://serverfault.com",
-			"http://superuser.com" 
-		});
-		url.setSelectedIndex(0);
-//		url.addActionListener(doRetrieveAction);
+		siteUrls = new JCheckBox[] {
+			new JCheckBox("http://stackoverflow.com", true),
+			new JCheckBox("http://meta.stackoverflow.com", false),
+			new JCheckBox("http://serverfault.com", false),
+			new JCheckBox("http://superuser.com", false),
+		};
+		siteIconLabels  = new JLabel[] {
+			new JLabel(siteIcons.get("stackoverflow.com")),	
+			new JLabel(siteIcons.get("meta.stackoverflow.com")),	
+			new JLabel(siteIcons.get("serverfault.com")),	
+			new JLabel(siteIcons.get("superuser.com")),	
+		};
+		tags = new JTextField[] {
+			new JTextField(15),
+			new JTextField(15),
+			new JTextField(15),
+			new JTextField(15),
+		};
+		totalLabel = new JLabel("Welcome to Open Stack Overflow Frontend");
+		status = new JLabel[] {
+			new JLabel("Stack Overflow", siteIconLabels[0].getIcon(), JLabel.LEFT), 
+			new JLabel("Meta", siteIconLabels[1].getIcon(), JLabel.LEFT), 
+			new JLabel("Server Fault", siteIconLabels[2].getIcon(), JLabel.LEFT),
+			new JLabel("Super User", siteIconLabels[3].getIcon(), JLabel.LEFT),
+		};
 		
 		page = new JFormattedTextField(1);
 		page.setColumns(4);
@@ -380,12 +405,8 @@ public class QuestionsGUI extends JFrame {
 			}
 		});
 		
-		tags = new JTextField(25);
-		tags.addActionListener(doRetrieveAction);
-		
 		merge = new JCheckBox("Merge");
 		merge.setSelected(true);
-		status = new JLabel("Welcome to Open Stack Overflow Frontend");
 		
 		excerpts = new JCheckBox("Excerpts");
 		excerpts.addActionListener(new ActionListener() {
@@ -410,43 +431,120 @@ public class QuestionsGUI extends JFrame {
 			}
 		});
 		
+		SequentialGroup sg = gl.createSequentialGroup();
+		for (int i = 0; i < siteUrls.length / 2; i++) {
+			sg.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg.addComponent(tags[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+		}
+		SequentialGroup sg1 = gl.createSequentialGroup();
+		for (int i = siteUrls.length / 2; i < siteUrls.length; i++) {
+			sg1.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg1.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg1.addComponent(tags[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+		}
+		SequentialGroup sg2 = gl.createSequentialGroup();
+		sg2.addComponent(totalLabel);
+		for (int i = 0; i < siteUrls.length; i++) {
+			sg2.addComponent(status[i]);
+		}		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
 				gl.createSequentialGroup()
-				.addComponent(url)
-				.addComponent(tags)
-				.addComponent(sort, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-				.addComponent(merge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-				.addComponent(excerpts, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-				.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-				.addComponent(go)
-				.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
-				.addComponent(more)
-				.addComponent(clear)
+				.addGroup(
+					gl.createParallelGroup()
+					.addGroup(
+						sg
+					)
+					.addGroup(
+						sg1
+					)
+				)
+				.addGroup(
+					gl.createParallelGroup()
+					.addGroup(
+						gl.createSequentialGroup()
+						.addComponent(go)
+						.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(more)
+						.addComponent(clear)
+					)
+					.addGroup(
+						gl.createSequentialGroup()
+						.addComponent(sort, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(merge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(excerpts, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+					)
+				)
 			)
 			.addComponent(scroll)
-			.addComponent(status)
+			.addGroup(
+				sg2
+			)
 		);
+		ParallelGroup pg = gl.createParallelGroup(Alignment.BASELINE);
+		for (int i = 0; i < siteUrls.length / 2; i++) {
+			pg.addComponent(siteIconLabels[i]);
+			pg.addComponent(siteUrls[i]);
+			pg.addComponent(tags[i]);
+		}
+		ParallelGroup pg1 = gl.createParallelGroup(Alignment.BASELINE);
+		for (int i = siteUrls.length / 2; i < siteUrls.length; i++) {
+			pg1.addComponent(siteIconLabels[i]);
+			pg1.addComponent(siteUrls[i]);
+			pg1.addComponent(tags[i]);
+		}
+		
+		ParallelGroup pg2 = gl.createParallelGroup(Alignment.BASELINE);
+		pg2.addComponent(totalLabel);
+		for (int i = 0; i < siteUrls.length; i++) {
+			pg2.addComponent(status[i]);
+		}		
 		gl.setVerticalGroup(
 			gl.createSequentialGroup()
 			.addGroup(
-				gl.createParallelGroup(Alignment.BASELINE)
-				.addComponent(url)
-				.addComponent(tags)
-				.addComponent(sort)
-				.addComponent(merge)
-				.addComponent(excerpts)
-				.addComponent(refresh)
-				.addComponent(go)
-				.addComponent(page)
-				.addComponent(more)
-				.addComponent(clear)
+				gl.createParallelGroup(Alignment.LEADING)
+				.addGroup(
+					gl.createSequentialGroup()
+					.addGroup(
+						pg
+					)
+					.addGroup(
+						pg1
+					)
+				)
+				.addGroup(
+					gl.createSequentialGroup()
+					.addGroup(
+						gl.createParallelGroup(Alignment.BASELINE)
+						.addComponent(go)
+						.addComponent(page)
+						.addComponent(more)
+						.addComponent(clear)
+					)
+					.addGroup(
+						gl.createParallelGroup(Alignment.BASELINE)
+						.addComponent(sort)
+						.addComponent(merge)
+						.addComponent(excerpts)
+						.addComponent(refresh)
+					)
+				)
 			)
 			.addComponent(scroll)
-			.addComponent(status)
+			.addGroup(
+				pg2
+			)
 		);
-		gl.linkSize(SwingConstants.VERTICAL, url, tags, sort, go, more, page, clear);
+		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, clear));
+		for (int i = 0; i < siteUrls.length; i++) {
+			comps.add(siteIconLabels[i]);
+			comps.add(siteUrls[i]);
+			comps.add(tags[i]);
+		}
+		gl.linkSize(SwingConstants.VERTICAL, comps.toArray(new Component[0]));
 		pack();
 		setLocationRelativeTo(null);
 		
@@ -548,14 +646,34 @@ public class QuestionsGUI extends JFrame {
 		}		
 	}
 	protected void doRetrieve(final int page) {
-		go.setIcon(rolling);
-		go.setEnabled(false);
-		more.setEnabled(false);
-		refreshTimer.stop();
-		final String tgs = tags.getText();
-		final String sorts = (String)sort.getSelectedItem();
-		final String siteStr = (String)url.getSelectedItem();
-		final boolean mergeVal = merge.isSelected();
+		List<SwingWorker<Void, Void>> workers = new LinkedList<SwingWorker<Void, Void>>();
+		for (int i = 0; i < siteUrls.length; i++) {
+			JCheckBox cb = siteUrls[i];
+			JTextField tf = tags[i];
+			JLabel lbl = status[i];
+			if (cb.isSelected()) {
+				go.setIcon(rolling);
+				go.setEnabled(false);
+				more.setEnabled(false);
+				refreshTimer.stop();
+				
+				final String tgs = tf.getText();
+				final String sorts = (String)sort.getSelectedItem();
+				final String siteStr = (String)cb.getText();
+				final boolean mergeVal = merge.isSelected();
+				SwingWorker<Void, Void> worker = createWorker(page, tgs, sorts,
+						siteStr, mergeVal, lbl);
+				workers.add(worker);
+				retrieveWip.incrementAndGet();
+			}
+		}
+		for (SwingWorker<?, ?> worker : workers) {
+			worker.execute();
+		}
+	}
+	protected SwingWorker<Void, Void> createWorker(final int page,
+			final String tgs, final String sorts, final String siteStr,
+			final boolean mergeVal, final JLabel statusLabel) {
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 			List<SummaryEntry> summary = Collections.emptyList();
 			@Override
@@ -584,8 +702,8 @@ public class QuestionsGUI extends JFrame {
 				for (SummaryEntry e : summary) {
 					e.site = st;
 				}
-				int s0 = model.questions.size();
 				int updated = 0;
+				int newer = 0;
 				if (!mergeVal) {
 					model.questions.addAll(summary);
 				} else {
@@ -606,27 +724,33 @@ public class QuestionsGUI extends JFrame {
 						}
 						if (!exists) {
 							model.questions.add(e);
+							newer++;
 						}
 					}
 				}
 				model.fireTableDataChanged();
-				if (!summary.isEmpty() && !adjusted) {
-					autoResizeColWidth(table, model);
-					adjusted = true;
-				}
-				go.setIcon(null);
-				go.setEnabled(true);
-				more.setEnabled(true);
-				status.setText(String.format("Total: %d, difference: %d, updated: %d", model.questions.size(), model.questions.size() - s0, updated));
-				// continue the refresh loop if it was selected
-				if (refresh.isSelected()) {
-					refreshCounter = REFRESH_TIME;
-					setRefreshLabel();
-					refreshTimer.start();
+				
+				statusLabel.setText(String.format("U: %d, N: %d", updated, newer));
+				if (retrieveWip.decrementAndGet() == 0) {
+					// the last will restore the button status
+					if (!summary.isEmpty() && !adjusted) {
+						autoResizeColWidth(table, model);
+						adjusted = true;
+					}
+					go.setIcon(null);
+					go.setEnabled(true);
+					more.setEnabled(true);
+					// continue the refresh loop if it was selected
+					if (refresh.isSelected()) {
+						refreshCounter = REFRESH_TIME;
+						setRefreshLabel();
+						refreshTimer.start();
+					}
+					totalLabel.setText(String.format("Total: %d", model.questions.size()));
 				}
 			}
 		};
-		worker.execute();
+		return worker;
 	}
 	protected void doRefreshToggle() {
 		if (refresh.isSelected()) {

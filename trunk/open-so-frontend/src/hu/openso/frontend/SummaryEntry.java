@@ -32,8 +32,8 @@ class SummaryEntry {
 		String result = "<entry>\r\n\t<id>" + id + "</id>\r\n\t<votes>" + votes + 
 		"</votes>\r\n\t<answers>" + answers + "</answers>\r\n\t<accepted>" + 
 		accepted + "</answered>\r\n\t<views>"
-		+ views + "</views>\r\n\t<title>" + title + "</title>\r\n\t<excerpt>" + 
-		excerpt + "</excerpt>\r\n\t<user-id>"
+		+ views + "</views>\r\n\t<title>" + HTML.toHTML(title) + "</title>\r\n\t<excerpt>" + 
+		HTML.toHTML(excerpt) + "</excerpt>\r\n\t<user-id>"
 		+ userId + "</user-id>\r\n\t<user-name>"
 		+ userName + "</user-name>\r\n\t" +
 		"<time>" + time + "</time>\r\n"

@@ -212,6 +212,17 @@ public class SOPageParsers {
 		}
 		return false;
 	}
+	static String replaceEntities(String s) {
+		return s.replaceAll("&ldquo;", "\u201C")
+		.replaceAll("&rdquo;", "\u201D")
+		.replaceAll("&lsquo;", "\u2018")
+		.replaceAll("&rsquo;", "\u2019")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&amp;", "&")
+//		.replaceAll("&lt;", "<")
+		.replaceAll("&hellip;", "\u2026")
+		;
+	}
 	private static void processListingsPage(final SummaryEntry se, Tag t) {
 		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -233,12 +244,12 @@ public class SOPageParsers {
 						se.views = Integer.parseInt(getNumberFrom(s.substring(0, s.indexOf("view")).trim()));
 					} else
 					if (clazzAttr.contains("question-hyperlink")) {
-						se.title = getTextOf(t);
+						se.title = replaceEntities(getTextOf(t));
 					} else
 					if (clazzAttr.contains("excerpt")) {
 						Node n = t.getFirstChild();
 						if (n instanceof Text) {
-							se.excerpt = ((Text)n).getText();
+							se.excerpt = replaceEntities(((Text)n).getText());
 						}
 					} else
 					if (testTimestamp(t)) {

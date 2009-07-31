@@ -125,7 +125,11 @@ public class QuestionsGUI extends JFrame {
 						for (int i = 0; i < panels; i++) {
 							QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec);
 							tabs.insertTab("", null, component, null, i);
-							tabs.setTabComponentAt(i, new TitleWithClose("Questions " + (i + 1), tabs, component));
+							String title = p.getProperty("P" + i + "-Title");
+							if (title == null) {
+								title = "Questions " + (i + 1);
+							}
+							tabs.setTabComponentAt(i, new TitleWithClose(title, tabs, component));
 							component.initPanel(i, p);
 						}
 						disableTabChange = false;
@@ -154,6 +158,8 @@ public class QuestionsGUI extends JFrame {
 				Component c = tabs.getComponentAt(i);
 				if (c instanceof QuestionPanel) {
 					QuestionPanel component = (QuestionPanel)c;
+					TitleWithClose tc = (TitleWithClose)tabs.getTabComponentAt(i);
+					p.setProperty("P" + i + "-Title", tc.getTitle());
 					component.donePanel(i, p);
 				}
 			}

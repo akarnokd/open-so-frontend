@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/jre6"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JDK 6u14"/>
 	<classpathentry kind="lib" path="lib/commons-pack.jar" sourcepath="lib/commons-pack.jar"/>
 	<classpathentry kind="lib" path="lib/htmlparser.jar" sourcepath="lib/htmlparser.jar"/>
 	<classpathentry kind="output" path="bin"/>

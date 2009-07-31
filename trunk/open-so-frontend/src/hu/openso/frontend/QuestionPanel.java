@@ -648,6 +648,7 @@ public class QuestionPanel extends JPanel {
 				}
 				int updated = 0;
 				int newer = 0;
+				table.getSelectionModel().clearSelection();
 				if (!mergeVal) {
 					model.questions.addAll(summary);
 				} else {

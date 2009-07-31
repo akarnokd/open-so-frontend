@@ -48,6 +48,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
 import javax.swing.GroupLayout.Alignment;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableColumnModel;
@@ -123,7 +125,12 @@ public class QuestionsGUI extends JFrame {
 				}
 				StringBuilder tb = new StringBuilder();
 				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
-				.append(color).append(";'>").append(se.title);
+				.append(color).append(";");
+				if (!se.userClicked) {
+					tb.append("background-color: #FFE0E0;");
+				}
+				tb.append("'>");
+				tb.append(se.title);
 				if (excerpts.isSelected()) {
 					tb.append("</font><br>")
 					.append(se.excerpt)
@@ -298,6 +305,7 @@ public class QuestionsGUI extends JFrame {
 			@Override
 			public void windowClosed(WindowEvent e) {
 				exec.shutdown();
+				refreshTimer.stop();
 			}
 		});
 		
@@ -327,6 +335,12 @@ public class QuestionsGUI extends JFrame {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				doTableClicked(e);
+			}
+		});
+		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+			@Override
+			public void valueChanged(ListSelectionEvent e) {
+				doQuestionClick();
 			}
 		});
 		JScrollPane scroll = new JScrollPane(table);
@@ -511,6 +525,9 @@ public class QuestionsGUI extends JFrame {
 		}
 	}
 	void doTableClicked(MouseEvent e) {
+		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() >= 1) {
+			doQuestionClick();
+		}
 		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2) {
 			doOpenQuestion();
 		}
@@ -521,6 +538,14 @@ public class QuestionsGUI extends JFrame {
 				menu.show(table, e.getX(), e.getY());
 			}
 		}
+	}
+	private void doQuestionClick() {
+		if (table.getSelectedRow() >= 0) {
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			SummaryEntry se = model.questions.get(idx);
+			se.userClicked = true;
+			model.fireTableRowsUpdated(idx, idx);
+		}		
 	}
 	protected void doRetrieve(final int page) {
 		go.setIcon(rolling);
@@ -560,6 +585,7 @@ public class QuestionsGUI extends JFrame {
 					e.site = st;
 				}
 				int s0 = model.questions.size();
+				int updated = 0;
 				if (!mergeVal) {
 					model.questions.addAll(summary);
 				} else {
@@ -569,6 +595,11 @@ public class QuestionsGUI extends JFrame {
 						for (SummaryEntry m : new LinkedList<SummaryEntry>(model.questions)) {
 							if (e.site.equals(m.site) && e.id.equals(m.id)) {
 								model.questions.set(i, e);
+								if (e.time > m.time) {
+									updated++;
+								} else {
+									e.userClicked = m.userClicked;
+								}
 								exists = true;
 							}
 							i++;
@@ -586,7 +617,7 @@ public class QuestionsGUI extends JFrame {
 				go.setIcon(null);
 				go.setEnabled(true);
 				more.setEnabled(true);
-				status.setText(String.format("Total: %d, difference: %d", model.questions.size(), model.questions.size() - s0));
+				status.setText(String.format("Total: %d, difference: %d, updated: %d", model.questions.size(), model.questions.size() - s0, updated));
 				// continue the refresh loop if it was selected
 				if (refresh.isSelected()) {
 					refreshCounter = REFRESH_TIME;

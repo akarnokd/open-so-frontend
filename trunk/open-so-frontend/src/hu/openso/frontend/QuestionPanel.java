@@ -314,7 +314,9 @@ public class QuestionPanel extends JPanel {
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				model.fireTableCellUpdated(row, col);
+				if (model.questions.size() > row) {
+					model.fireTableCellUpdated(row, col);
+				}
 			}
 		});
 	}
@@ -376,6 +378,18 @@ public class QuestionPanel extends JPanel {
 		});
 		table.getColumnModel().getColumn(7).setCellRenderer(new CustomCellRenderer());
 		JScrollPane scroll = new JScrollPane(table);
+		scroll.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				doTablePopupClick(e);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				doTablePopupClick(e);
+			}
+		});
+		
+		
 		goImage = new ImageIcon(getClass().getResource("res/go.png"));
 		go = new JButton(goImage);
 		go.setToolTipText("Read the first page of the selected sites and subpages");
@@ -716,16 +730,18 @@ public class QuestionPanel extends JPanel {
 		}		
 	}
 	protected void doCopyAvatarUrl() {
-		Desktop d = Desktop.getDesktop();
-		int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
-		if (d != null) {
-			SummaryEntry se = model.questions.get(idx);
-			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(se.avatarUrl), new ClipboardOwner() {
-				@Override
-				public void lostOwnership(Clipboard clipboard, Transferable contents) {
-					// nothing
-				}
-			});		
+		if (table.getSelectedRow() >= 0) {
+			Desktop d = Desktop.getDesktop();
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			if (d != null) {
+				SummaryEntry se = model.questions.get(idx);
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(se.avatarUrl), new ClipboardOwner() {
+					@Override
+					public void lostOwnership(Clipboard clipboard, Transferable contents) {
+						// nothing
+					}
+				});		
+			}
 		}
 	}
 	protected void doMarkAsRead() {
@@ -811,8 +827,8 @@ public class QuestionPanel extends JPanel {
 			int i = table.rowAtPoint(e.getPoint());
 			if (i >= 0 && i < table.getRowCount()) {
 				table.getSelectionModel().setSelectionInterval(i, i);
-				menu.show(table, e.getX(), e.getY());
 			}
+			menu.show(e.getComponent(), e.getX(), e.getY());
 		}
 	}
 	private void doQuestionClick() {

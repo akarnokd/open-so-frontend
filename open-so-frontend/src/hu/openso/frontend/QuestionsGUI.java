@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,15 +27,18 @@ import javax.swing.event.ChangeListener;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.3";
+	static final String version = "0.5";
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
 	ExecutorService exec = Executors.newCachedThreadPool();
+	/** The global ignore table for site/id. */
+	Map<String, String> globalIgnores = new LinkedHashMap<String, String>();
 	JTabbedPane tabs;
 	JPanel EMPTY_PANEL = new JPanel();
 	boolean disableTabChange;
+	final IgnoreListGUI globalIgnoreListGUI;
 	public QuestionsGUI() {
 		super("Open Stack Overflow Frontend v" + version + " - Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -50,10 +54,12 @@ public class QuestionsGUI extends JFrame {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
+		globalIgnoreListGUI = new IgnoreListGUI(globalIgnores);
+		globalIgnoreListGUI.setTitle("Global Ignore List");
 		tabs = new JTabbedPane();
 		getContentPane().setLayout(new BorderLayout());
 		getContentPane().add(tabs, BorderLayout.CENTER);
-		QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec);
+		QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 		tabs.insertTab("Questions " + (tabs.getTabCount() + 1), null, p, null, tabs.getTabCount());
 		tabs.setTabComponentAt(0, new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p));
 		tabs.addTab("+", null, EMPTY_PANEL, "Open new tab");
@@ -79,7 +85,7 @@ public class QuestionsGUI extends JFrame {
 	protected void doTabClicked() {
 		if (tabs.getSelectedComponent() == EMPTY_PANEL) {
 			disableTabChange = true;
-			QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec);
+			QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 			tabs.insertTab("", null, component, null, tabs.getTabCount() - 1);
 			tabs.setTabComponentAt(tabs.getTabCount() - 2, new TitleWithClose("Questions " + (tabs.getTabCount() - 1), tabs, component));
 			disableTabChange = false;
@@ -123,7 +129,7 @@ public class QuestionsGUI extends JFrame {
 						disableTabChange = true;
 						tabs.removeTabAt(0); // remove default tab
 						for (int i = 0; i < panels; i++) {
-							QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec);
+							QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 							tabs.insertTab("", null, component, null, i);
 							String title = p.getProperty("P" + i + "-Title");
 							if (title == null) {
@@ -134,6 +140,13 @@ public class QuestionsGUI extends JFrame {
 						}
 						disableTabChange = false;
 						tabs.setSelectedIndex(0);
+					}
+				}
+				String ignoreCnt = p.getProperty("IgnoreCount");
+				if (ignoreCnt != null) {
+					int ic = Integer.parseInt(ignoreCnt);
+					for (int i = 0; i < ic; i++) {
+						globalIgnores.put(p.getProperty("Ignore" + i), p.getProperty("IgnoreTitle" + i));
 					}
 				}
 			} finally {
@@ -162,6 +175,13 @@ public class QuestionsGUI extends JFrame {
 					p.setProperty("P" + i + "-Title", tc.getTitle());
 					component.donePanel(i, p);
 				}
+			}
+			p.setProperty("IgnoreCount", Integer.toString(globalIgnores.size()));
+			int i = 0;
+			for (Map.Entry<String, String> e: globalIgnores.entrySet()) {
+				p.setProperty("Ignore" + i, e.getKey());
+				p.setProperty("IgnoreTitle" + i, e.getValue());
+				i++;
 			}
 			
 			FileOutputStream out = new FileOutputStream("config.xml");

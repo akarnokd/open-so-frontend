@@ -2,6 +2,11 @@ package hu.openso.frontend;
 
 import java.awt.Component;
 import java.awt.Desktop;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -511,8 +516,31 @@ public class QuestionPanel extends JPanel {
 				doOpenUser();
 			}
 		});
+		JMenuItem copyAvatarUrl = new JMenuItem("Copy Avatar URL");
+		copyAvatarUrl.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doCopyAvatarUrl();
+			}
+		});
 		menu.add(openQuestion);
 		menu.add(openUser);
+		menu.add(copyAvatarUrl);
+	}
+	protected void doCopyAvatarUrl() {
+		if (table.getSelectedRow() >= 0) {
+			Desktop d = Desktop.getDesktop();
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			if (d != null) {
+				SummaryEntry se = model.questions.get(idx);
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(se.avatarUrl), new ClipboardOwner() {
+					@Override
+					public void lostOwnership(Clipboard clipboard, Transferable contents) {
+						// nothing
+					}
+				});		
+			}
+		}
 	}
 	protected void doMarkAsRead() {
 		for (SummaryEntry se : model.questions) {
@@ -523,7 +551,7 @@ public class QuestionPanel extends JPanel {
 	protected void doRefreshCounter() {
 		refreshCounter--;
 		setRefreshLabel();
-		if (refreshCounter == 0) {
+		if (refreshCounter <= 0) {
 			doRetrieve(1);
 		}
 	}

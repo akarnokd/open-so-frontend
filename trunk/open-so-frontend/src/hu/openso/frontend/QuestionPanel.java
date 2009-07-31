@@ -192,7 +192,17 @@ public class QuestionPanel extends JPanel {
 					sb.append("<font color='#CC9966'>&#9679;</font>").append(pad(se.bronzeBadges)).append(se.bronzeBadges).append(" ");
 				}
 				return sb.toString();
-			case 13: return se.tags;
+			case 13: 
+				StringBuilder tgb = new StringBuilder();
+				tgb.append("<html>");
+				for (String s : se.tags) {
+					if (tgb.length() > 6) {
+						tgb.append(", ");
+					}
+					tgb.append(s);
+				}
+				tgb.append("<br>&nbsp;");
+				return tgb.toString();
 			}
 			return null;
 		}

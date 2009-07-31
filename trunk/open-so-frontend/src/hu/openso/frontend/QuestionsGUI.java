@@ -6,6 +6,7 @@ import java.awt.Container;
 import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -13,7 +14,12 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -26,12 +32,14 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
+import javax.swing.DefaultRowSorter;
 import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -42,9 +50,11 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -52,6 +62,7 @@ import javax.swing.Timer;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.GroupLayout.ParallelGroup;
 import javax.swing.GroupLayout.SequentialGroup;
+import javax.swing.RowSorter.SortKey;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
@@ -61,11 +72,15 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
 
 public class QuestionsGUI extends JFrame {
+	/** Annotation for value saving. */
+	@Retention(RetentionPolicy.RUNTIME)
+	public @interface SaveValue { }
 	private static final long serialVersionUID = 5676803531378664660L;
 	JTable table;
 	QuestionModel model;
 	JButton go;
-	JFormattedTextField page;
+	@SaveValue
+	JTextField page;
 	ImageIcon rolling;
 	ImageIcon okay;
 	ImageIcon unknown;
@@ -75,18 +90,25 @@ public class QuestionsGUI extends JFrame {
 	JButton clear;
 	boolean adjusted;
 	JPopupMenu menu;
+	@SaveValue
 	JCheckBox merge;
 	JLabel[] status;
+	@SaveValue
 	JCheckBox excerpts;
+	@SaveValue
 	JCheckBox refresh;
 	Timer refreshTimer;
 	int refreshCounter;
 	static final int REFRESH_TIME = 30;
+
+	@SaveValue
 	JCheckBox[] siteUrls;
+	@SaveValue
 	JTextField[] tags;
 	JLabel[] siteIconLabels;
 	AtomicInteger retrieveWip = new AtomicInteger(0);
 	JLabel totalLabel;
+	JButton markAsRead;
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
@@ -156,7 +178,7 @@ public class QuestionsGUI extends JFrame {
 				StringBuilder tb = new StringBuilder();
 				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
 				.append(color).append(";");
-				if (!se.userClicked) {
+				if (!se.markRead) {
 					tb.append("background-color: #FFE0E0;");
 				}
 				tb.append("'>");
@@ -314,6 +336,7 @@ public class QuestionsGUI extends JFrame {
 			public void windowClosed(WindowEvent e) {
 				exec.shutdown();
 				refreshTimer.stop();
+				doneConfig();
 			}
 		});
 		
@@ -356,7 +379,7 @@ public class QuestionsGUI extends JFrame {
 		ActionListener doRetrieveAction = new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				page.setValue(1);
+				page.setText("1");
 				doRetrieve(1);
 			}
 		};
@@ -430,6 +453,13 @@ public class QuestionsGUI extends JFrame {
 				doRefreshCounter();
 			}
 		});
+		markAsRead = new JButton("All read");
+		markAsRead.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doMarkAsRead();
+			}
+		});
 		
 		SequentialGroup sg = gl.createSequentialGroup();
 		for (int i = 0; i < siteUrls.length / 2; i++) {
@@ -466,6 +496,7 @@ public class QuestionsGUI extends JFrame {
 					.addGroup(
 						gl.createSequentialGroup()
 						.addComponent(go)
+						.addComponent(markAsRead)
 						.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 						.addComponent(more)
 						.addComponent(clear)
@@ -520,6 +551,7 @@ public class QuestionsGUI extends JFrame {
 					.addGroup(
 						gl.createParallelGroup(Alignment.BASELINE)
 						.addComponent(go)
+						.addComponent(markAsRead)
 						.addComponent(page)
 						.addComponent(more)
 						.addComponent(clear)
@@ -545,8 +577,6 @@ public class QuestionsGUI extends JFrame {
 			comps.add(tags[i]);
 		}
 		gl.linkSize(SwingConstants.VERTICAL, comps.toArray(new Component[0]));
-		pack();
-		setLocationRelativeTo(null);
 		
 		menu = new JPopupMenu();
 		JMenuItem openQuestion = new JMenuItem("Open question");
@@ -565,6 +595,21 @@ public class QuestionsGUI extends JFrame {
 		});
 		menu.add(openQuestion);
 		menu.add(openUser);
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				pack();
+				setLocationRelativeTo(null);
+				initConfig();
+				doExcerptToggle();
+				setVisible(true);
+			}
+		});
+	}
+	protected void doMarkAsRead() {
+		for (SummaryEntry se : model.questions) {
+			se.markRead = true;
+		}
 	}
 	protected void doRefreshCounter() {
 		refreshCounter--;
@@ -616,10 +661,10 @@ public class QuestionsGUI extends JFrame {
 		}
 	}
 	protected void doGetMore() {
-		Integer i = (Integer)page.getValue();
-		if (i != null) {
+		if (!"".equals(page.getText())) {
+			int i = Integer.parseInt(page.getText().trim());
 			doRetrieve(i + 1);
-			page.setValue(i + 1);
+			page.setText(Integer.toString(i + 1));
 		}
 	}
 	void doTableClicked(MouseEvent e) {
@@ -641,7 +686,7 @@ public class QuestionsGUI extends JFrame {
 		if (table.getSelectedRow() >= 0) {
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			SummaryEntry se = model.questions.get(idx);
-			se.userClicked = true;
+			se.markRead = true;
 			model.fireTableRowsUpdated(idx, idx);
 		}		
 	}
@@ -716,7 +761,7 @@ public class QuestionsGUI extends JFrame {
 								if (e.time > m.time) {
 									updated++;
 								} else {
-									e.userClicked = m.userClicked;
+									e.markRead = m.markRead;
 								}
 								exists = true;
 							}
@@ -771,4 +816,139 @@ public class QuestionsGUI extends JFrame {
 		});
 	}
 
+	/**
+	 * Saves or loads the values for various fields annotated with savevalue.
+	 * @param save if true the values are saved
+	 * @param p the properties to load/save from
+	 */
+	private void saveLoadValues(boolean save, Properties p) {
+		Class<?> clazz = this.getClass();
+		for (Field f : clazz.getDeclaredFields()) {
+			SaveValue a = f.getAnnotation(SaveValue.class);
+			if (a != null) {
+				try {
+					Object o = f.get(this);
+					if (o != null && Object[].class.isAssignableFrom(o.getClass())) {
+						Object[] objs = (Object[])o;
+						for (int i = 0; i < objs.length; i++) {
+							doObjectLoadSave(save, p, f, objs[i], i);
+						}
+					} else {
+						doObjectLoadSave(save, p, f, o, 0);
+					}
+				} catch (NumberFormatException ex) {
+					// ignored
+				} catch (IllegalArgumentException ex) {
+					// ignored
+				} catch (IllegalAccessException ex) {
+					// ignored
+				}
+			}
+		}
+	}
+	private void doObjectLoadSave(boolean save, Properties p, Field f, Object o, int index) {
+		if (o instanceof JTextField) {
+			JTextField v = (JTextField)o;
+			if (save) {
+				String s = v.getText();
+				p.setProperty(f.getName() + index, s != null ? s : "");
+			} else {
+				v.setText(p.getProperty(f.getName() + index));
+			}
+		} else
+		if (o instanceof JComboBox) {
+			JComboBox v = (JComboBox)o;
+			if (save) {
+				if (v.isEditable()) {
+					p.setProperty(f.getName() + index, v.getSelectedItem() != null ? v.getSelectedItem().toString() : "");
+				} else {
+					p.setProperty(f.getName() + index, Integer.toString(v.getSelectedIndex()));
+				}
+			} else {
+				String s = p.getProperty(f.getName() + index);
+				if (v.isEditable()) {
+					v.setSelectedItem(s);
+				} else {
+					v.setSelectedIndex(s != null && s.length() > 0 ? Integer.parseInt(s) : -1);
+				}
+			}
+		} else
+		if (o instanceof JRadioButton) {
+			JRadioButton v = (JRadioButton)o;
+			if (save) {
+				p.setProperty(f.getName() + index, v.isSelected() ? "true" : "false");
+			} else {
+				v.setSelected("true".equals(p.getProperty(f.getName() + index)));
+			}
+		}
+		if (o instanceof JCheckBox) {
+			JCheckBox v = (JCheckBox)o;
+			if (save) {
+				p.setProperty(f.getName() + index, v.isSelected() ? "true" : "false");
+			} else {
+				v.setSelected("true".equals(p.getProperty(f.getName() + index)));
+			}
+		}
+	}
+	/** Initialize the window based on the configuration file. */
+	private void initConfig() {
+		try {
+			FileInputStream in = new FileInputStream("config.xml");
+			try {
+				Properties p = new Properties();
+				p.loadFromXML(in);
+				// set window statuses
+				String winstat = p.getProperty("WindowStatus");
+				setExtendedState(Integer.parseInt(winstat));
+				if (getExtendedState() == JFrame.NORMAL) {
+					Rectangle rect = new Rectangle();
+					rect.x = Integer.parseInt(p.getProperty("X"));
+					rect.y = Integer.parseInt(p.getProperty("Y"));
+					rect.width = Integer.parseInt(p.getProperty("Width"));
+					rect.height = Integer.parseInt(p.getProperty("Height"));
+					setBounds(rect);
+				}
+				saveLoadValues(false, p);
+				// restore default sort order
+				DefaultRowSorter<?, ?> drs = (DefaultRowSorter<?, ?>)table.getRowSorter();
+				String sortKey = p.getProperty("SortKey");
+				String sortIndex = p.getProperty("SortIndex");
+				if (sortKey != null && sortIndex != null) {
+					int j = Integer.parseInt(sortIndex);
+					drs.setSortKeys(Collections.singletonList(new SortKey(j, SortOrder.valueOf(sortKey))));
+				}
+			} finally {
+				in.close();
+			}
+		} catch (IOException ex) {
+			// ignore
+		}
+	}
+	/** Save the window state to configuration file. */
+	private void doneConfig() {
+		try {
+			Properties p = new Properties();
+			p.setProperty("WindowStatus", Integer.toString(getExtendedState()));
+			Rectangle rect = getBounds();
+			p.setProperty("X", Integer.toString(rect.x));
+			p.setProperty("Y", Integer.toString(rect.y));
+			p.setProperty("Width", Integer.toString(rect.width));
+			p.setProperty("Height", Integer.toString(rect.height));
+			FileOutputStream out = new FileOutputStream("config.xml");
+			saveLoadValues(true, p);
+			DefaultRowSorter<?, ?> drs = (DefaultRowSorter<?, ?>)table.getRowSorter();
+			List<? extends SortKey> list = drs.getSortKeys();
+			if (list.size() > 0) {
+				p.setProperty("SortKey", list.get(0).getSortOrder().name());
+				p.setProperty("SortIndex", Integer.toString(list.get(0).getColumn()));
+			}
+			try {
+				p.storeToXML(out, "");
+			} finally {
+				out.close();
+			}
+		} catch (IOException ex) {
+			
+		}
+	}
 }

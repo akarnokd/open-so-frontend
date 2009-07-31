@@ -27,7 +27,7 @@ class SummaryEntry {
 	// ----------------------------------------------
 	public Boolean wiki;
 	public int bounty;
-	public boolean userClicked;
+	public boolean markRead;
 	@Override
 	public String toString() {
 		String result = "<entry>\r\n\t<id>" + id + "</id>\r\n\t<votes>" + votes + 

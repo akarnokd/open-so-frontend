@@ -245,6 +245,7 @@ public class QuestionPanel extends JPanel {
 			se = model.questions.get(table.convertRowIndexToModel(row));
 			JLabel lbl = (JLabel)super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
 			setText("");
+			setToolTipText(se.title);
 			return lbl;
 		}
 		@Override

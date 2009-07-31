@@ -228,7 +228,7 @@ public class SOPageParsers {
 						se.answers = Integer.parseInt(s.substring(0, s.indexOf("a")).trim());
 						se.accepted = clazzAttr.contains("answered-accepted");
 					} else
-					if (clazzAttr.contains("views")) {
+					if (tagWithAttrStarts(t, "div", "class", "views")) {
 						String s = getTextOf(t);
 						se.views = Integer.parseInt(getNumberFrom(s.substring(0, s.indexOf("view")).trim()));
 					} else

@@ -13,7 +13,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -36,6 +35,8 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -48,9 +49,6 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableColumnModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
-
-import org.apache.commons.httpclient.HttpException;
-import org.htmlparser.util.ParserException;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
@@ -136,13 +134,13 @@ public class QuestionsGUI extends JFrame {
 				sb.append("<html>");
 				SummaryEntry se = questions.get(rowIndex);
 				if (se.goldBadges > 0) {
-					sb.append("<font color='#FFCC00'>&#9679;</font>").append(se.goldBadges).append(" ");
+					sb.append("<font color='#FFCC00'>&#9679;</font>").append(pad(se.goldBadges)).append(se.goldBadges).append(" ");
 				}
 				if (se.silverBadges > 0) {
-					sb.append("<font color='#C0C0C0'>&#9679;</font>").append(se.silverBadges).append(" ");
+					sb.append("<font color='#C0C0C0'>&#9679;</font>").append(pad(se.silverBadges)).append(se.silverBadges).append(" ");
 				}
 				if (se.bronzeBadges > 0) {
-					sb.append("<font color='#CC9966'>&#9679;</font>").append(se.bronzeBadges).append(" ");
+					sb.append("<font color='#CC9966'>&#9679;</font>").append(pad(se.bronzeBadges)).append(se.bronzeBadges).append(" ");
 				}
 				return sb.toString();
 			case 13: return questions.get(rowIndex).tags;
@@ -168,11 +166,24 @@ public class QuestionsGUI extends JFrame {
 		}
 		
 	}
+	String pad(int value) {
+		StringBuilder result = new StringBuilder();
+		if (value < 100) {
+			result.append("&nbsp;");
+		}
+		if (value < 10) {
+			result.append("&nbsp;");
+		}
+		return result.toString();
+	}
 	String replaceEntities(String s) {
 		return s.replaceAll("&ldquo;", "\u201C")
 		.replaceAll("&rdquo;", "\u201D")
 		.replaceAll("&lsquo;", "\u2018")
-		.replaceAll("&rsquo;", "\u2019");
+		.replaceAll("&rsquo;", "\u2019")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&amp;", "&")
+		.replaceAll("&lt;", "<");
 	}
 	void doRefreshTable(final int row, final int col) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -266,6 +277,7 @@ public class QuestionsGUI extends JFrame {
 	JButton more;
 	JButton clear;
 	boolean adjusted;
+	JPopupMenu menu;
 	public QuestionsGUI() {
 		super("Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -309,6 +321,7 @@ public class QuestionsGUI extends JFrame {
 		ActionListener doRetrieveAction = new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				page.setValue(1);
 				doRetrieve(1);
 			}
 		};
@@ -374,16 +387,43 @@ public class QuestionsGUI extends JFrame {
 		gl.linkSize(SwingConstants.VERTICAL, url, tags, sort, go, more, page, clear);
 		pack();
 		setLocationRelativeTo(null);
+		
+		menu = new JPopupMenu();
+		JMenuItem openQuestion = new JMenuItem("Open question");
+		openQuestion.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenQuestion();
+			}
+		});
+		JMenuItem openUser = new JMenuItem("Open user");
+		openUser.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUser();
+			}
+		});
+		menu.add(openQuestion);
+		menu.add(openUser);
 	}
-	protected void doGetMore() {
-		Integer i = (Integer)page.getValue();
-		if (i != null) {
-			doRetrieve(i);
-			page.setValue(i + 1);
+	protected void doOpenUser() {
+		if (table.getSelectedRow() >= 0) {
+			Desktop d = Desktop.getDesktop();
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			if (d != null) {
+				try {
+					SummaryEntry se = model.questions.get(idx);
+					d.browse(new URI("http://" + se.site + "/users/" +se.userId));
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				} catch (URISyntaxException e1) {
+					e1.printStackTrace();
+				}
+			}
 		}
 	}
-	void doTableClicked(MouseEvent e) {
-		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2 && table.getSelectedRow() >= 0) {
+	protected void doOpenQuestion() {
+		if (table.getSelectedRow() >= 0) {
 			Desktop d = Desktop.getDesktop();
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			if (d != null) {
@@ -395,6 +435,25 @@ public class QuestionsGUI extends JFrame {
 				} catch (URISyntaxException e1) {
 					e1.printStackTrace();
 				}
+			}
+		}
+	}
+	protected void doGetMore() {
+		Integer i = (Integer)page.getValue();
+		if (i != null) {
+			doRetrieve(i + 1);
+			page.setValue(i + 1);
+		}
+	}
+	void doTableClicked(MouseEvent e) {
+		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2) {
+			doOpenQuestion();
+		}
+		if (e.getButton() == MouseEvent.BUTTON3) {
+			int i = table.rowAtPoint(e.getPoint());
+			if (i >= 0 && i < table.getRowCount()) {
+				table.getSelectionModel().setSelectionInterval(i, i);
+				menu.show(table, e.getX(), e.getY());
 			}
 		}
 	}
@@ -419,13 +478,7 @@ public class QuestionsGUI extends JFrame {
 					}
 					;
 					summary = SOPageParsers.processMainPage(data);
-				} catch (ParserException e) {
-					e.printStackTrace();
-				} catch (HttpException e) {
-					e.printStackTrace();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
+				} catch (Throwable e) {
 					e.printStackTrace();
 				}
 				return null;

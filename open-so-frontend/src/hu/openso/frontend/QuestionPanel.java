@@ -724,8 +724,8 @@ public class QuestionPanel extends JPanel {
 					go.setEnabled(true);
 					more.setEnabled(true);
 					// continue the refresh loop if it was selected
+					refreshCounter = REFRESH_TIME;
 					if (refresh.isSelected()) {
-						refreshCounter = REFRESH_TIME;
 						setRefreshLabel();
 						refreshTimer.start();
 					}

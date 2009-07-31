@@ -46,6 +46,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -122,10 +123,10 @@ public class QuestionsGUI extends JFrame {
 				}
 				StringBuilder tb = new StringBuilder();
 				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
-				.append(color).append(";'>").append(replaceEntities(se.title));
+				.append(color).append(";'>").append(se.title);
 				if (excerpts.isSelected()) {
 					tb.append("</font><br>")
-					.append(replaceEntities(se.excerpt))
+					.append(se.excerpt)
 					.append("<br>&nbsp;</html>");
 				}
 				return tb.toString();
@@ -189,17 +190,6 @@ public class QuestionsGUI extends JFrame {
 			result.append("&nbsp;");
 		}
 		return result.toString();
-	}
-	String replaceEntities(String s) {
-		return s.replaceAll("&ldquo;", "\u201C")
-		.replaceAll("&rdquo;", "\u201D")
-		.replaceAll("&lsquo;", "\u2018")
-		.replaceAll("&rsquo;", "\u2019")
-		.replaceAll("&gt;", ">")
-		.replaceAll("&amp;", "&")
-//		.replaceAll("&lt;", "<")
-		.replaceAll("&hellip;", "\u2026")
-		;
 	}
 	void doRefreshTable(final int row, final int col) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -297,6 +287,10 @@ public class QuestionsGUI extends JFrame {
 	JCheckBox merge;
 	JLabel status;
 	JCheckBox excerpts;
+	JCheckBox refresh;
+	Timer refreshTimer;
+	int refreshCounter;
+	static final int REFRESH_TIME = 30;
 	public QuestionsGUI() {
 		super("Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -307,15 +301,15 @@ public class QuestionsGUI extends JFrame {
 			}
 		});
 		
-		rolling = new ImageIcon(getClass().getResource("loading.gif"));
-		okay = new ImageIcon(getClass().getResource("ok.png"));
-		unknown = new ImageIcon(getClass().getResource("unknown.png"));
-		wiki = new ImageIcon(getClass().getResource("wiki.png"));
+		rolling = new ImageIcon(getClass().getResource("res/loading.gif"));
+		okay = new ImageIcon(getClass().getResource("res/ok.png"));
+		unknown = new ImageIcon(getClass().getResource("res/unknown.png"));
+		wiki = new ImageIcon(getClass().getResource("res/wiki.png"));
 		
-		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("so.png")));
-		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("sf.png")));
-		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("su.png")));
-		siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("meta.png")));
+		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
+		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
+		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
+		siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
 		
 		Container c = getContentPane();
 		GroupLayout gl = new GroupLayout(c);
@@ -386,6 +380,21 @@ public class QuestionsGUI extends JFrame {
 				doExcerptToggle();
 			};
 		});
+		refresh = new JCheckBox();
+		refreshCounter = REFRESH_TIME;
+		setRefreshLabel();
+		refresh.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRefreshToggle();
+			}
+		});
+		refreshTimer = new Timer(1000, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRefreshCounter();
+			}
+		});
 		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
@@ -396,6 +405,7 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(sort, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(merge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(excerpts, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(go)
 				.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(more)
@@ -413,6 +423,7 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(sort)
 				.addComponent(merge)
 				.addComponent(excerpts)
+				.addComponent(refresh)
 				.addComponent(go)
 				.addComponent(page)
 				.addComponent(more)
@@ -442,6 +453,16 @@ public class QuestionsGUI extends JFrame {
 		});
 		menu.add(openQuestion);
 		menu.add(openUser);
+	}
+	protected void doRefreshCounter() {
+		refreshCounter--;
+		setRefreshLabel();
+		if (refreshCounter == 0) {
+			doRetrieve(1);
+		}
+	}
+	private void setRefreshLabel() {
+		refresh.setText(String.format("Refresh (in %ds)", refreshCounter));
 	}
 	protected void doExcerptToggle() {
 		if (excerpts.isSelected()) {
@@ -505,6 +526,7 @@ public class QuestionsGUI extends JFrame {
 		go.setIcon(rolling);
 		go.setEnabled(false);
 		more.setEnabled(false);
+		refreshTimer.stop();
 		final String tgs = tags.getText();
 		final String sorts = (String)sort.getSelectedItem();
 		final String siteStr = (String)url.getSelectedItem();
@@ -565,9 +587,22 @@ public class QuestionsGUI extends JFrame {
 				go.setEnabled(true);
 				more.setEnabled(true);
 				status.setText(String.format("Total: %d, difference: %d", model.questions.size(), model.questions.size() - s0));
+				// continue the refresh loop if it was selected
+				if (refresh.isSelected()) {
+					refreshCounter = REFRESH_TIME;
+					setRefreshLabel();
+					refreshTimer.start();
+				}
 			}
 		};
 		worker.execute();
+	}
+	protected void doRefreshToggle() {
+		if (refresh.isSelected()) {
+			refreshTimer.start();
+		} else {
+			refreshTimer.stop();
+		}
 	}
 	/**
 	 * @param args

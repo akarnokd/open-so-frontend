@@ -31,10 +31,11 @@ public class TitleWithClose extends JPanel {
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		comp = new JLabel(title);
 		add(comp);
-		add(Box.createHorizontalStrut(5));
+		add(Box.createHorizontalStrut(10));
+		add(Box.createHorizontalGlue());
 		
 		JButton btnR = new JButton("R");
-		btnR.setPreferredSize(new Dimension(17, 17));
+		btnR.setPreferredSize(new Dimension(19, 17));
 		btnR.setToolTipText("Rename this tab");
 		btnR.setFocusable(false);
 		btnR.setBorderPainted(false);
@@ -51,7 +52,7 @@ public class TitleWithClose extends JPanel {
 		
 		
 		JButton btn = new JButton("X");
-		btn.setPreferredSize(new Dimension(17, 17));
+		btn.setPreferredSize(new Dimension(19, 17));
 		btn.setToolTipText("Close this tab");
 		btn.setFocusable(false);
 		btn.setBorderPainted(false);

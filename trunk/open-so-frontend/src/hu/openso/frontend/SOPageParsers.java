@@ -268,7 +268,7 @@ public class SOPageParsers {
 					if (testUser(t)) {
 						String a = t.getAttribute("href");
 						int idx = a.indexOf("/", 8);
-						se.userId = a.substring(8, idx);
+						se.userId = a.substring(7, idx);
 						Node n = t.getFirstChild();
 						if (n instanceof Text) {
 							se.userName = ((Text)n).getText();

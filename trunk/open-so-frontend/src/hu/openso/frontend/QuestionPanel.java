@@ -7,6 +7,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
@@ -25,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +102,12 @@ public class QuestionPanel extends JPanel {
 	Map<String, ImageIcon> avatarsLoading;
 	Map<String, ImageIcon> siteIcons;
 	ExecutorService exec;
+	boolean readCheck = true;
+	/** Set of site name + question id to ignore to the title. */
+	Map<String, String> ignores = new LinkedHashMap<String, String>();
+	Map<String, String> globalIgnores;
+	IgnoreListGUI ignoreListGUI;
+	final IgnoreListGUI globalIgnoreListGUI;
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -151,29 +159,6 @@ public class QuestionPanel extends JPanel {
 			case 5: return se.answers;
 			case 6: return se.views;
 			case 7:
-//				String color = "#000000";
-//				if (se.site.equals("stackoverflow.com")) {
-//					color = "#0077CC";
-//				} else
-//				if (se.site.equals("meta.stackoverflow.com")) {
-//					color = "#3D3D3D";
-//				} else
-//				if (se.site.equals("serverfault.com")) {
-//					color = "#10456A";
-//				}
-//				StringBuilder tb = new StringBuilder();
-//				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
-//				.append(color).append(";");
-//				if (!se.markRead) {
-//					tb.append("background-color: #FFE0E0;");
-//				}
-//				tb.append("'>");
-//				tb.append(se.title);
-//				if (excerpts.isSelected()) {
-//					tb.append("</font><br>")
-//					.append(se.excerpt)
-//					.append("<br>&nbsp;</html>");
-//				}
 				return se.title;
 			case 8: return sdf.format(new Timestamp(se.time));
 			case 9:
@@ -253,13 +238,15 @@ public class QuestionPanel extends JPanel {
 			super.paint(g);
 			Graphics2D g2 = (Graphics2D)g;
 			if (se != null) {
+				g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				Font f0 = g2.getFont();
 				g2.setFont(getFont().deriveFont(Font.BOLD, 16));
 				Color c0 = g2.getBackground();
-				int h = g2.getFontMetrics().getHeight();
+				FontMetrics fm0 = g2.getFontMetrics(); 
+				int h = fm0.getHeight();
 				if (!se.markRead) {
 					g2.setColor(new Color(0xFFFFE0E0));
-					g2.fillRect(0, 1 + g2.getFontMetrics().getDescent(), getWidth(), h);
+					g2.fillRect(0, 1 + fm0.getDescent(), getWidth(), h);
 				}
 				g2.setColor(Color.BLACK);
 				if (se.site.equals("stackoverflow.com")) {
@@ -271,7 +258,21 @@ public class QuestionPanel extends JPanel {
 				if (se.site.equals("serverfault.com")) {
 					g2.setColor(new Color(0x10456A));
 				}
-				g2.drawString(se.title, 2, h);
+				int ellw = fm0.stringWidth("\u2026");
+				int titleWidth = fm0.stringWidth(se.title);
+				if (titleWidth > getWidth()) {
+					for (int i = se.title.length() - 1; i > 0; i--) {
+						String tstr = se.title.substring(0, i);
+						int tstrw = fm0.stringWidth(tstr);
+						if (tstrw + ellw < getWidth()) {
+							g2.drawString(tstr, 2, h);
+							g2.drawString("\u2026", 2 + tstrw, h);
+							break;
+						}
+					}
+				} else {
+					g2.drawString(se.title, 2, h);
+				}
 				// -----------------------------------
 				if (excerpts.isSelected()) {
 					g2.setFont(f0);
@@ -320,11 +321,14 @@ public class QuestionPanel extends JPanel {
 	public QuestionPanel(Map<String, ImageIcon> avatars, 
 				Map<String, ImageIcon> avatarsLoading, 
 				Map<String, ImageIcon> siteIcons,
-				ExecutorService exec) {
+				ExecutorService exec, Map<String, String> globalIgnores, 
+				IgnoreListGUI globalIgnoreListGUI) {
 		this.avatars = avatars;
 		this.avatarsLoading = avatarsLoading;
 		this.siteIcons = siteIcons;
 		this.exec = exec;
+		this.globalIgnores = globalIgnores;
+		this.globalIgnoreListGUI = globalIgnoreListGUI;
 		init();
 		
 	}
@@ -354,6 +358,14 @@ public class QuestionPanel extends JPanel {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				doTableClicked(e);
+			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				doTablePopupClick(e);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				doTablePopupClick(e);
 			}
 		});
 		table.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
@@ -543,7 +555,7 @@ public class QuestionPanel extends JPanel {
 					gl.createSequentialGroup()
 					.addGroup(
 						gl.createParallelGroup(Alignment.BASELINE)
-						.addComponent(go)
+						.addComponent(go, 25, 25, 25)
 						.addComponent(markAsRead)
 						.addComponent(page)
 						.addComponent(more)
@@ -571,6 +583,12 @@ public class QuestionPanel extends JPanel {
 		}
 		gl.linkSize(SwingConstants.VERTICAL, comps.toArray(new Component[0]));
 		
+		createMenu();
+	}
+	/**
+	 * 
+	 */
+	private void createMenu() {
 		menu = new JPopupMenu();
 		JMenuItem openQuestion = new JMenuItem("Open question");
 		openQuestion.addActionListener(new ActionListener() {
@@ -593,23 +611,121 @@ public class QuestionPanel extends JPanel {
 				doCopyAvatarUrl();
 			}
 		});
+		JMenuItem ignore = new JMenuItem("Ignore locally");
+		ignore.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doAddIgnore();
+			}
+		});
+		JMenuItem ignoreGlobal = new JMenuItem("Ignore globally");
+		ignoreGlobal.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doAddIgnoreGlobal();
+			}
+		});
+		JMenuItem resetLocal = new JMenuItem("Reset local ignore");
+		resetLocal.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				resetLocalIgnores();
+			}
+		});
+		
+		JMenuItem showLocalIgnores = new JMenuItem("Show local ignores...");
+		showLocalIgnores.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doShowLocalIgnores();
+			}
+		});
+		JMenuItem showGlobalIgnores = new JMenuItem("Show global ignores...");
+		showGlobalIgnores.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doShowGlobalIgnores();
+			}
+		});
+		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
+		menu.addSeparator();
+		menu.add(ignore);
+		menu.add(ignoreGlobal);
+		menu.add(resetLocal);
+		menu.addSeparator();
+		menu.add(showLocalIgnores);
+		menu.add(showGlobalIgnores);
+	}
+	/**
+	 * 
+	 */
+	protected void doShowGlobalIgnores() {
+		globalIgnoreListGUI.remapIgnores();
+		globalIgnoreListGUI.setVisible(true);
+	}
+	/**
+	 * 
+	 */
+	protected void resetLocalIgnores() {
+		ignores.clear();
+		if (ignoreListGUI != null) {
+			ignoreListGUI.remapIgnores();
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doShowLocalIgnores() {
+		if (ignoreListGUI == null) {
+			ignoreListGUI = new IgnoreListGUI(ignores);
+			ignoreListGUI.setLocationRelativeTo(this);
+			ignoreListGUI.autoSizeTable();
+		}
+		ignoreListGUI.remapIgnores();
+		ignoreListGUI.setVisible(true);
+	}
+	/**
+	 * 
+	 */
+	protected void doAddIgnoreGlobal() {
+		if (table.getSelectedRow() >= 0) {
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			SummaryEntry se = model.questions.get(idx);
+			globalIgnores.put(se.site + "/" + se.id, se.title);
+			model.questions.remove(idx);
+			model.fireTableRowsDeleted(idx, idx);
+			globalIgnoreListGUI.remapIgnores();
+		}		
+	}
+	/**
+	 * 
+	 */
+	protected void doAddIgnore() {
+		if (table.getSelectedRow() >= 0) {
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			SummaryEntry se = model.questions.get(idx);
+			ignores.put(se.site + "/" + se.id, se.title);
+			model.questions.remove(idx);
+			model.fireTableRowsDeleted(idx, idx);
+			if (ignoreListGUI != null) {
+				ignoreListGUI.remapIgnores();
+			}
+		}		
 	}
 	protected void doCopyAvatarUrl() {
-		if (table.getSelectedRow() >= 0) {
-			Desktop d = Desktop.getDesktop();
-			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
-			if (d != null) {
-				SummaryEntry se = model.questions.get(idx);
-				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(se.avatarUrl), new ClipboardOwner() {
-					@Override
-					public void lostOwnership(Clipboard clipboard, Transferable contents) {
-						// nothing
-					}
-				});		
-			}
+		Desktop d = Desktop.getDesktop();
+		int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+		if (d != null) {
+			SummaryEntry se = model.questions.get(idx);
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(se.avatarUrl), new ClipboardOwner() {
+				@Override
+				public void lostOwnership(Clipboard clipboard, Transferable contents) {
+					// nothing
+				}
+			});		
 		}
 	}
 	protected void doMarkAsRead() {
@@ -689,7 +805,9 @@ public class QuestionPanel extends JPanel {
 		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2) {
 			doOpenQuestion();
 		}
-		if (e.getButton() == MouseEvent.BUTTON3) {
+	}
+	void doTablePopupClick(MouseEvent e) {
+		if (e.isPopupTrigger()) {
 			int i = table.rowAtPoint(e.getPoint());
 			if (i >= 0 && i < table.getRowCount()) {
 				table.getSelectionModel().setSelectionInterval(i, i);
@@ -698,7 +816,7 @@ public class QuestionPanel extends JPanel {
 		}
 	}
 	private void doQuestionClick() {
-		if (table.getSelectedRow() >= 0) {
+		if (table.getSelectedRow() >= 0 && readCheck) {
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			SummaryEntry se = model.questions.get(idx);
 			se.markRead = true;
@@ -755,60 +873,7 @@ public class QuestionPanel extends JPanel {
 			}
 			@Override
 			protected void done() {
-				String st = siteStr;
-				if (st.startsWith("http://")) {
-					st = st.substring(7);
-				}
-				for (SummaryEntry e : summary) {
-					e.site = st;
-				}
-				int updated = 0;
-				int newer = 0;
-				table.getSelectionModel().clearSelection();
-				if (!mergeVal) {
-					model.questions.addAll(summary);
-				} else {
-					for (SummaryEntry e : summary) {
-						int i = 0;
-						boolean exists = false;
-						for (SummaryEntry m : new LinkedList<SummaryEntry>(model.questions)) {
-							if (e.site.equals(m.site) && e.id.equals(m.id)) {
-								model.questions.set(i, e);
-								if (e.time > m.time) {
-									updated++;
-								} else {
-									e.markRead = m.markRead;
-								}
-								exists = true;
-							}
-							i++;
-						}
-						if (!exists) {
-							model.questions.add(e);
-							newer++;
-						}
-					}
-				}
-				model.fireTableDataChanged();
-				
-				statusLabel.setText(String.format("U: %d, N: %d", updated, newer));
-				if (retrieveWip.decrementAndGet() == 0) {
-					// the last will restore the button status
-					if (!summary.isEmpty() && !adjusted) {
-						GUIUtils.autoResizeColWidth(table, model);
-						adjusted = true;
-					}
-					go.setIcon(goImage);
-					go.setEnabled(true);
-					more.setEnabled(true);
-					// continue the refresh loop if it was selected
-					refreshCounter = REFRESH_TIME;
-					if (refresh.isSelected()) {
-						setRefreshLabel();
-						refreshTimer.start();
-					}
-					totalLabel.setText(String.format("Total: %d", model.questions.size()));
-				}
+				displayResponse(siteStr, mergeVal, statusLabel, summary);
 			}
 		};
 		return worker;
@@ -829,6 +894,13 @@ public class QuestionPanel extends JPanel {
 		if (sortKey != null && sortIndex != null) {
 			int j = Integer.parseInt(sortIndex);
 			drs.setSortKeys(Collections.singletonList(new SortKey(j, SortOrder.valueOf(sortKey))));
+		}
+		String ignoreCnt = p.getProperty("P" + panelIndex + "-" + "IgnoreCount");
+		if (ignoreCnt != null) {
+			int ic = Integer.parseInt(ignoreCnt);
+			for (int i = 0; i < ic; i++) {
+				ignores.put(p.getProperty("P" + panelIndex + "-" + "Ignore" + i), p.getProperty("P" + panelIndex + "-" + "IgnoreTitle" + i));
+			}
 		}
 		doLoadColumnWidths(panelIndex, p);
 		doExcerptToggle();
@@ -864,5 +936,82 @@ public class QuestionPanel extends JPanel {
 			p.setProperty("P" + panelIndex + "-" + "SortIndex", Integer.toString(list.get(0).getColumn()));
 		}
 		doSaveColumnWidths(panelIndex, p);
+		p.setProperty("P" + panelIndex + "-" + "IgnoreCount", Integer.toString(ignores.size()));
+		int i = 0;
+		for (Map.Entry<String, String> e: ignores.entrySet()) {
+			p.setProperty("P" + panelIndex + "-" + "Ignore" + i, e.getKey());
+			p.setProperty("P" + panelIndex + "-" + "IgnoreTitle" + i, e.getValue());
+			i++;
+		}
+	}
+	/**
+	 * @param siteStr
+	 * @param mergeVal
+	 * @param statusLabel
+	 * @param summary 
+	 */
+	private void displayResponse(final String siteStr, final boolean mergeVal,
+			final JLabel statusLabel, List<SummaryEntry> summary) {
+		String st = siteStr;
+		if (st.startsWith("http://")) {
+			st = st.substring(7);
+		}
+		for (SummaryEntry e : summary) {
+			e.site = st;
+		}
+		int updated = 0;
+		int newer = 0;
+		readCheck = false;
+		if (!mergeVal) {
+			model.questions.addAll(summary);
+		} else {
+			for (SummaryEntry e : summary) {
+				if (ignores.containsKey(e.site + "/" + e.id)) {
+					continue;
+				}
+				if (globalIgnores.containsKey(e.site + "/" + e.id)) {
+					continue;
+				}
+				int i = 0;
+				boolean exists = false;
+				for (SummaryEntry m : new LinkedList<SummaryEntry>(model.questions)) {
+					if (e.site.equals(m.site) && e.id.equals(m.id)) {
+						model.questions.set(i, e);
+						if (e.time > m.time) {
+							updated++;
+						} else {
+							e.markRead = m.markRead;
+						}
+						exists = true;
+					}
+					i++;
+				}
+				if (!exists) {
+					model.questions.add(e);
+					newer++;
+				}
+			}
+		}
+		model.fireTableDataChanged();
+		readCheck = true;
+		
+		statusLabel.setText(String.format("U: %d, N: %d", updated, newer));
+		if (retrieveWip.decrementAndGet() == 0) {
+			// the last will restore the button status
+			if (!summary.isEmpty() && !adjusted) {
+				GUIUtils.autoResizeColWidth(table, model);
+				adjusted = true;
+			}
+			go.setIcon(goImage);
+			go.setEnabled(true);
+			more.setEnabled(true);
+			// continue the refresh loop if it was selected
+			refreshCounter = REFRESH_TIME;
+			if (refresh.isSelected()) {
+				setRefreshLabel();
+				refreshTimer.start();
+			}
+			totalLabel.setText(String.format("Total: %d", model.questions.size()));
+		}
 	}
 }

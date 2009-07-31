@@ -120,7 +120,15 @@ public class QuestionsGUI extends JFrame {
 				if (se.site.equals("serverfault.com")) {
 					color = "#10456A";
 				}
-				return "<html><font style='font-size: 16pt; font-weight: bold; color: " + color + ";'>" + replaceEntities(se.title);
+				StringBuilder tb = new StringBuilder();
+				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
+				.append(color).append(";'>").append(replaceEntities(se.title));
+				if (excerpts.isSelected()) {
+					tb.append("</font><br>")
+					.append(replaceEntities(se.excerpt))
+					.append("<br>&nbsp;</html>");
+				}
+				return tb.toString();
 			case 8: return sdf.format(new Timestamp(se.time));
 			case 9:
 				final String url = se.avatarUrl;
@@ -189,7 +197,9 @@ public class QuestionsGUI extends JFrame {
 		.replaceAll("&rsquo;", "\u2019")
 		.replaceAll("&gt;", ">")
 		.replaceAll("&amp;", "&")
-		.replaceAll("&lt;", "<");
+//		.replaceAll("&lt;", "<")
+		.replaceAll("&hellip;", "\u2026")
+		;
 	}
 	void doRefreshTable(final int row, final int col) {
 		SwingUtilities.invokeLater(new Runnable() {
@@ -286,6 +296,7 @@ public class QuestionsGUI extends JFrame {
 	JPopupMenu menu;
 	JCheckBox merge;
 	JLabel status;
+	JCheckBox excerpts;
 	public QuestionsGUI() {
 		super("Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -368,6 +379,14 @@ public class QuestionsGUI extends JFrame {
 		merge.setSelected(true);
 		status = new JLabel("Welcome to Open Stack Overflow Frontend");
 		
+		excerpts = new JCheckBox("Excerpts");
+		excerpts.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doExcerptToggle();
+			};
+		});
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -376,6 +395,7 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(tags)
 				.addComponent(sort, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(merge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(excerpts, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(go)
 				.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(more)
@@ -392,6 +412,7 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(tags)
 				.addComponent(sort)
 				.addComponent(merge)
+				.addComponent(excerpts)
 				.addComponent(go)
 				.addComponent(page)
 				.addComponent(more)
@@ -421,6 +442,13 @@ public class QuestionsGUI extends JFrame {
 		});
 		menu.add(openQuestion);
 		menu.add(openUser);
+	}
+	protected void doExcerptToggle() {
+		if (excerpts.isSelected()) {
+			table.setRowHeight(32 + 3 * 10);
+		} else {
+			table.setRowHeight(32);
+		}
 	}
 	protected void doOpenUser() {
 		if (table.getSelectedRow() >= 0) {

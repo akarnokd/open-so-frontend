@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,9 +33,11 @@ import javax.imageio.ImageIO;
 import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
@@ -90,33 +93,37 @@ public class QuestionsGUI extends JFrame {
 		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		@Override
 		public Object getValueAt(final int rowIndex, final int columnIndex) {
+			SummaryEntry se = questions.get(rowIndex);
 			switch (columnIndex) {
-			case 0: return siteIcons.get(questions.get(rowIndex).site);
-			case 1: return questions.get(rowIndex).accepted ? okay : null;
+			case 0: return siteIcons.get(se.site);
+			case 1: return se.accepted ? okay : null;
 			case 2:
-				Boolean wiki = questions.get(rowIndex).wiki;
-				return wiki != null ? (wiki.booleanValue() ? wiki : null) : unknown;
+				Boolean wiki = se.wiki;
+				return wiki != null ? (wiki.booleanValue() ? wiki : null) : null;
 			case 3: 
-				int b = questions.get(rowIndex).bounty;
-//				if (b > 0) {
-//					ImageIcon icon = bountyImage.get(b);
-//					if (icon == null) {
-//						icon = createBountyImage(b);
-//						bountyImage.put(b, icon);
-//					}
-//					return icon;
-//				}
+				int b = se.bounty;
 				if (b > 0) {
 					return "<html><font style='background-color: #0077DD; color: white;'>&nbsp;+" + b + "&nbsp;</font></html>";
 				}
 				return null;
-			case 4: return questions.get(rowIndex).votes;
-			case 5: return questions.get(rowIndex).answers;
-			case 6: return questions.get(rowIndex).views;
-			case 7: return replaceEntities(questions.get(rowIndex).title);
-			case 8: return sdf.format(new Timestamp(questions.get(rowIndex).time));
+			case 4: return se.votes;
+			case 5: return se.answers;
+			case 6: return se.views;
+			case 7:
+				String color = "#000000";
+				if (se.site.equals("stackoverflow.com")) {
+					color = "#0077CC";
+				} else
+				if (se.site.equals("meta.stackoverflow.com")) {
+					color = "#3D3D3D";
+				} else
+				if (se.site.equals("serverfault.com")) {
+					color = "#10456A";
+				}
+				return "<html><font style='font-size: 16pt; font-weight: bold; color: " + color + ";'>" + replaceEntities(se.title);
+			case 8: return sdf.format(new Timestamp(se.time));
 			case 9:
-				final String url = questions.get(rowIndex).avatarUrl;
+				final String url = se.avatarUrl;
 				if (url != null) {
 					ImageIcon icon = avatars.get(url);
 					if (icon == null) {
@@ -127,12 +134,11 @@ public class QuestionsGUI extends JFrame {
 					return icon;
 				}
 				return null;
-			case 10: return questions.get(rowIndex).userName;
-			case 11: return questions.get(rowIndex).userRep;
+			case 10: return se.userName;
+			case 11: return se.userRep;
 			case 12: 
 				StringBuilder sb = new StringBuilder();
 				sb.append("<html>");
-				SummaryEntry se = questions.get(rowIndex);
 				if (se.goldBadges > 0) {
 					sb.append("<font color='#FFCC00'>&#9679;</font>").append(pad(se.goldBadges)).append(se.goldBadges).append(" ");
 				}
@@ -143,7 +149,7 @@ public class QuestionsGUI extends JFrame {
 					sb.append("<font color='#CC9966'>&#9679;</font>").append(pad(se.bronzeBadges)).append(se.bronzeBadges).append(" ");
 				}
 				return sb.toString();
-			case 13: return questions.get(rowIndex).tags;
+			case 13: return se.tags;
 			}
 			return null;
 		}
@@ -278,6 +284,8 @@ public class QuestionsGUI extends JFrame {
 	JButton clear;
 	boolean adjusted;
 	JPopupMenu menu;
+	JCheckBox merge;
+	JLabel status;
 	public QuestionsGUI() {
 		super("Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -356,6 +364,10 @@ public class QuestionsGUI extends JFrame {
 		tags = new JTextField(25);
 		tags.addActionListener(doRetrieveAction);
 		
+		merge = new JCheckBox("Merge");
+		merge.setSelected(true);
+		status = new JLabel("Welcome to Open Stack Overflow Frontend");
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -363,12 +375,14 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(url)
 				.addComponent(tags)
 				.addComponent(sort, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(merge, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(go)
 				.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 				.addComponent(more)
 				.addComponent(clear)
 			)
 			.addComponent(scroll)
+			.addComponent(status)
 		);
 		gl.setVerticalGroup(
 			gl.createSequentialGroup()
@@ -377,12 +391,14 @@ public class QuestionsGUI extends JFrame {
 				.addComponent(url)
 				.addComponent(tags)
 				.addComponent(sort)
+				.addComponent(merge)
 				.addComponent(go)
 				.addComponent(page)
 				.addComponent(more)
 				.addComponent(clear)
 			)
 			.addComponent(scroll)
+			.addComponent(status)
 		);
 		gl.linkSize(SwingConstants.VERTICAL, url, tags, sort, go, more, page, clear);
 		pack();
@@ -464,6 +480,7 @@ public class QuestionsGUI extends JFrame {
 		final String tgs = tags.getText();
 		final String sorts = (String)sort.getSelectedItem();
 		final String siteStr = (String)url.getSelectedItem();
+		final boolean mergeVal = merge.isSelected();
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 			List<SummaryEntry> summary = Collections.emptyList();
 			@Override
@@ -492,7 +509,25 @@ public class QuestionsGUI extends JFrame {
 				for (SummaryEntry e : summary) {
 					e.site = st;
 				}
-				model.questions.addAll(summary);
+				int s0 = model.questions.size();
+				if (!mergeVal) {
+					model.questions.addAll(summary);
+				} else {
+					for (SummaryEntry e : summary) {
+						int i = 0;
+						boolean exists = false;
+						for (SummaryEntry m : new LinkedList<SummaryEntry>(model.questions)) {
+							if (e.site.equals(m.site) && e.id.equals(m.id)) {
+								model.questions.set(i, e);
+								exists = true;
+							}
+							i++;
+						}
+						if (!exists) {
+							model.questions.add(e);
+						}
+					}
+				}
 				model.fireTableDataChanged();
 				if (!summary.isEmpty() && !adjusted) {
 					autoResizeColWidth(table, model);
@@ -501,6 +536,7 @@ public class QuestionsGUI extends JFrame {
 				go.setIcon(null);
 				go.setEnabled(true);
 				more.setEnabled(true);
+				status.setText(String.format("Total: %d, difference: %d", model.questions.size(), model.questions.size() - s0));
 			}
 		};
 		worker.execute();

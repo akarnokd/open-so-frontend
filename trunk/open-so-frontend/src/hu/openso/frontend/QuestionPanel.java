@@ -1,7 +1,12 @@
 package hu.openso.frontend;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Desktop;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.ClipboardOwner;
@@ -54,6 +59,7 @@ import javax.swing.RowSorter.SortKey;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
 
 public class QuestionPanel extends JPanel {
 	private static final long serialVersionUID = 2165339317109256363L;
@@ -145,30 +151,30 @@ public class QuestionPanel extends JPanel {
 			case 5: return se.answers;
 			case 6: return se.views;
 			case 7:
-				String color = "#000000";
-				if (se.site.equals("stackoverflow.com")) {
-					color = "#0077CC";
-				} else
-				if (se.site.equals("meta.stackoverflow.com")) {
-					color = "#3D3D3D";
-				} else
-				if (se.site.equals("serverfault.com")) {
-					color = "#10456A";
-				}
-				StringBuilder tb = new StringBuilder();
-				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
-				.append(color).append(";");
-				if (!se.markRead) {
-					tb.append("background-color: #FFE0E0;");
-				}
-				tb.append("'>");
-				tb.append(se.title);
-				if (excerpts.isSelected()) {
-					tb.append("</font><br>")
-					.append(se.excerpt)
-					.append("<br>&nbsp;</html>");
-				}
-				return tb.toString();
+//				String color = "#000000";
+//				if (se.site.equals("stackoverflow.com")) {
+//					color = "#0077CC";
+//				} else
+//				if (se.site.equals("meta.stackoverflow.com")) {
+//					color = "#3D3D3D";
+//				} else
+//				if (se.site.equals("serverfault.com")) {
+//					color = "#10456A";
+//				}
+//				StringBuilder tb = new StringBuilder();
+//				tb.append("<html><font style='font-size: 16pt; font-weight: bold; color: ")
+//				.append(color).append(";");
+//				if (!se.markRead) {
+//					tb.append("background-color: #FFE0E0;");
+//				}
+//				tb.append("'>");
+//				tb.append(se.title);
+//				if (excerpts.isSelected()) {
+//					tb.append("</font><br>")
+//					.append(se.excerpt)
+//					.append("<br>&nbsp;</html>");
+//				}
+				return se.title;
 			case 8: return sdf.format(new Timestamp(se.time));
 			case 9:
 				final String url = se.avatarUrl;
@@ -229,6 +235,68 @@ public class QuestionPanel extends JPanel {
 			});
 		}
 		
+	}
+	class CustomCellRenderer extends DefaultTableCellRenderer {
+		private static final long serialVersionUID = -1187003361272971515L;
+		@Override
+		public Component getTableCellRendererComponent(JTable table,
+				Object value, boolean isSelected, boolean hasFocus, int row,
+				int column) {
+			se = model.questions.get(table.convertRowIndexToModel(row));
+			JLabel lbl = (JLabel)super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+			setText("");
+			return lbl;
+		}
+		@Override
+		public void paint(Graphics g) {
+			super.paint(g);
+			Graphics2D g2 = (Graphics2D)g;
+			if (se != null) {
+				Font f0 = g2.getFont();
+				g2.setFont(getFont().deriveFont(Font.BOLD, 16));
+				Color c0 = g2.getBackground();
+				int h = g2.getFontMetrics().getHeight();
+				if (!se.markRead) {
+					g2.setColor(new Color(0xFFFFE0E0));
+					g2.fillRect(0, 1 + g2.getFontMetrics().getDescent(), getWidth(), h);
+				}
+				g2.setColor(Color.BLACK);
+				if (se.site.equals("stackoverflow.com")) {
+					g2.setColor(new Color(0x0077CC));
+				} else
+				if (se.site.equals("meta.stackoverflow.com")) {
+					g2.setColor(new Color(0x3D3D3D));
+				} else
+				if (se.site.equals("serverfault.com")) {
+					g2.setColor(new Color(0x10456A));
+				}
+				g2.drawString(se.title, 2, h);
+				// -----------------------------------
+				if (excerpts.isSelected()) {
+					g2.setFont(f0);
+					g2.setColor(Color.BLACK);
+					g2.setBackground(c0);
+					int h2 = g2.getFontMetrics().getHeight();
+					
+					int w = getWidth();
+					String[] split = se.excerpt.trim().split("\\s+");
+					int y = h + h2;
+					int x = 2;
+					FontMetrics fm = g2.getFontMetrics();
+					int spw = fm.stringWidth(" ");
+					for (String s : split) {
+						int tw = fm.stringWidth(s);
+						if (x + tw > w) {
+							y += h2;
+							x = 2;
+						}
+						g2.drawString(s, x, y);
+						x += tw + spw;
+					}
+				}
+			}
+		}
+		SummaryEntry se;
 	}
 	String pad(int value) {
 		StringBuilder result = new StringBuilder();
@@ -293,6 +361,7 @@ public class QuestionPanel extends JPanel {
 				doQuestionClick();
 			}
 		});
+		table.getColumnModel().getColumn(7).setCellRenderer(new CustomCellRenderer());
 		JScrollPane scroll = new JScrollPane(table);
 		goImage = new ImageIcon(getClass().getResource("res/go.png"));
 		go = new JButton(goImage);
@@ -583,18 +652,26 @@ public class QuestionPanel extends JPanel {
 	}
 	protected void doOpenQuestion() {
 		if (table.getSelectedRow() >= 0) {
-			Desktop d = Desktop.getDesktop();
-			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
-			if (d != null) {
-				try {
-					SummaryEntry se = model.questions.get(idx);
-					d.browse(new URI("http://" + se.site + "/questions/" +se.id));
-				} catch (IOException e1) {
-					e1.printStackTrace();
-				} catch (URISyntaxException e1) {
-					e1.printStackTrace();
-				}
-			}
+			final int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			SwingWorker<?, ?> sw = new SwingWorker<Void, Void>() {
+				protected Void doInBackground() throws Exception {
+					Desktop d = Desktop.getDesktop();
+					if (d != null) {
+						try {
+							SummaryEntry se = model.questions.get(idx);
+							d.browse(new URI("http://" + se.site + "/questions/" +se.id));
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						} catch (URISyntaxException e1) {
+							e1.printStackTrace();
+						}
+					}
+					return null;
+				};
+			};
+			sw.execute();
+			invalidate();
+			repaint();
 		}
 	}
 	protected void doGetMore() {
@@ -641,7 +718,7 @@ public class QuestionPanel extends JPanel {
 				
 				final String tgs = tf.getText();
 				final String sorts = (String)sort.getSelectedItem();
-				final String siteStr = (String)cb.getText();
+				final String siteStr = cb.getText();
 				final boolean mergeVal = merge.isSelected();
 				SwingWorker<Void, Void> worker = createWorker(page, tgs, sorts,
 						siteStr, mergeVal, lbl);
@@ -746,8 +823,8 @@ public class QuestionPanel extends JPanel {
 		GUIUtils.saveLoadValues(this, false, p, panelIndex);
 		// restore default sort order
 		DefaultRowSorter<?, ?> drs = (DefaultRowSorter<?, ?>)table.getRowSorter();
-		String sortKey = p.getProperty("SortKey");
-		String sortIndex = p.getProperty("SortIndex");
+		String sortKey = p.getProperty("P" + panelIndex + "-" + "SortKey");
+		String sortIndex = p.getProperty("P" + panelIndex + "-" + "SortIndex");
 		if (sortKey != null && sortIndex != null) {
 			int j = Integer.parseInt(sortIndex);
 			drs.setSortKeys(Collections.singletonList(new SortKey(j, SortOrder.valueOf(sortKey))));

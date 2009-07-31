@@ -219,7 +219,8 @@ public class SOPageParsers {
 		.replaceAll("&rsquo;", "\u2019")
 		.replaceAll("&gt;", ">")
 		.replaceAll("&amp;", "&")
-//		.replaceAll("&lt;", "<")
+		.replaceAll("&quot;", "\"")
+		.replaceAll("&apos;", "'")
 		.replaceAll("&hellip;", "\u2026")
 		;
 	}

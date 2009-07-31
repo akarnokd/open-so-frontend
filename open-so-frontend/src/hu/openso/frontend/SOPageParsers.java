@@ -274,7 +274,7 @@ public class SOPageParsers {
 						}
 					} else
 					if (testAvatar(t)) {
-						se.avatarUrl = t.getAttribute("src");
+						se.avatarUrl = replaceEntities(t.getAttribute("src"));
 					} else
 					if (testBadge(t, "gold badge")) {
 						String s = t.getAttribute("title");

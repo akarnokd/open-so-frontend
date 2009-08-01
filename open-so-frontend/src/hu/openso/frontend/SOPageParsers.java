@@ -224,19 +224,6 @@ public class SOPageParsers {
 		}
 		return false;
 	}
-	static String replaceEntities(String s) {
-		return s.replaceAll("&ldquo;", "\u201C")
-		.replaceAll("&rdquo;", "\u201D")
-		.replaceAll("&lsquo;", "\u2018")
-		.replaceAll("&rsquo;", "\u2019")
-		.replaceAll("&gt;", ">")
-		.replaceAll("&amp;", "&")
-		.replaceAll("&quot;", "\"")
-		.replaceAll("&apos;", "'")
-		.replaceAll("&hellip;", "\u2026")
-		.replaceAll("&mdash;", "\u2014")
-		;
-	}
 	private static void processListingsPage(final SummaryEntry se, Tag t) {
 		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -587,5 +574,19 @@ public class SOPageParsers {
 				}
 			}
 		});
+	}
+	static String replaceEntities(String s) {
+		return s.replaceAll("&ldquo;", "\u201C")
+		.replaceAll("&rdquo;", "\u201D")
+		.replaceAll("&lsquo;", "\u2018")
+		.replaceAll("&rsquo;", "\u2019")
+		.replaceAll("&lt;", "<")
+		.replaceAll("&gt;", ">")
+		.replaceAll("&amp;", "&")
+		.replaceAll("&quot;", "\"")
+		.replaceAll("&apos;", "'")
+		.replaceAll("&hellip;", "\u2026")
+		.replaceAll("&mdash;", "\u2014")
+		;
 	}
 }

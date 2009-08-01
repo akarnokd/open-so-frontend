@@ -38,15 +38,14 @@ public class QuestionsGUI extends JFrame {
 	JTabbedPane tabs;
 	JPanel EMPTY_PANEL = new JPanel();
 	boolean disableTabChange;
-	final IgnoreListGUI globalIgnoreListGUI;
+	IgnoreListGUI globalIgnoreListGUI;
 	public QuestionsGUI() {
 		super("Open Stack Overflow Frontend v" + version + " - Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
 			@Override
 			public void windowClosed(WindowEvent e) {
-				exec.shutdown();
-				doneConfig();
+				doExit();
 			}
 		});
 		try {
@@ -193,5 +192,14 @@ public class QuestionsGUI extends JFrame {
 		} catch (IOException ex) {
 			
 		}
+	}
+	/**
+	 * 
+	 */
+	private void doExit() {
+		exec.shutdown();
+		globalIgnoreListGUI.dispose();
+		globalIgnoreListGUI = null;
+		doneConfig();
 	}
 }

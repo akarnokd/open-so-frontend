@@ -19,6 +19,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
@@ -71,6 +73,8 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
 import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.httpclient.HttpException;
+import org.htmlparser.util.ParserException;
 
 public class QuestionPanel extends JPanel {
 	private static final long serialVersionUID = 2165339317109256363L;
@@ -82,6 +86,7 @@ public class QuestionPanel extends JPanel {
 	ImageIcon rolling;
 	ImageIcon okay;
 	ImageIcon unknown;
+	ImageIcon error;
 	ImageIcon wiki;
 	@SaveValue
 	JComboBox sort;
@@ -107,6 +112,8 @@ public class QuestionPanel extends JPanel {
 	JLabel[] siteIconLabels;
 	AtomicInteger retrieveWip = new AtomicInteger(0);
 	JLabel totalLabel;
+	/** Label for background task running. */
+	JLabel wikiBackgroundTask;
 	JButton markAsRead;
 	Map<String, ImageIcon> avatars;
 	Map<String, ImageIcon> avatarsLoading;
@@ -156,10 +163,10 @@ public class QuestionPanel extends JPanel {
 			SummaryEntry se = questions.get(rowIndex);
 			switch (columnIndex) {
 			case 0: return siteIcons.get(se.site);
-			case 1: return se.accepted ? okay : null;
+			case 1: return se.accepted ? okay : (se.deleted ? error : null);
 			case 2:
-				Boolean wiki = se.wiki;
-				return wiki != null ? (wiki.booleanValue() ? wiki : null) : null;
+				Boolean isWiki = se.wiki;
+				return isWiki != null ? (isWiki.booleanValue() ? wiki : null) : unknown;
 			case 3: 
 				int b = se.bounty;
 				if (b > 0) {
@@ -349,6 +356,7 @@ public class QuestionPanel extends JPanel {
 		rolling = new ImageIcon(getClass().getResource("res/loading.gif"));
 		okay = new ImageIcon(getClass().getResource("res/ok.png"));
 		unknown = new ImageIcon(getClass().getResource("res/unknown.png"));
+		error = new ImageIcon(getClass().getResource("res/error.png"));
 		wiki = new ImageIcon(getClass().getResource("res/wiki.png"));
 		
 		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
@@ -440,6 +448,7 @@ public class QuestionPanel extends JPanel {
 			new JLabel("Server Fault", siteIconLabels[2].getIcon(), JLabel.LEFT),
 			new JLabel("Super User", siteIconLabels[3].getIcon(), JLabel.LEFT),
 		};
+		wikiBackgroundTask = new JLabel();
 		
 		page = new JFormattedTextField(1);
 		page.setColumns(4);
@@ -511,6 +520,7 @@ public class QuestionPanel extends JPanel {
 		for (int i = 0; i < siteUrls.length; i++) {
 			sg2.addComponent(status[i]);
 		}		
+		sg2.addComponent(wikiBackgroundTask);
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -566,6 +576,7 @@ public class QuestionPanel extends JPanel {
 		for (int i = 0; i < siteUrls.length; i++) {
 			pg2.addComponent(status[i]);
 		}		
+		pg2.addComponent(wikiBackgroundTask);
 		gl.setVerticalGroup(
 			gl.createSequentialGroup()
 			.addGroup(
@@ -689,11 +700,29 @@ public class QuestionPanel extends JPanel {
 				doUnread();
 			}
 		});
+
+		JMenuItem wikiDelTest = new JMenuItem("Test for Wiki/Deleted");
+		wikiDelTest.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doWikiDelTest();
+			}
+		});
+		JMenuItem wikiDelTestAll = new JMenuItem("Test ALL for Wiki/Deleted");
+		wikiDelTestAll.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doWikiDelTestAll();
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
 		menu.add(unread);
+		menu.addSeparator();
+		menu.add(wikiDelTest);
+		menu.add(wikiDelTestAll);
 		menu.addSeparator();
 		menu.add(removeFromList);
 		menu.addSeparator();
@@ -703,6 +732,109 @@ public class QuestionPanel extends JPanel {
 		menu.addSeparator();
 		menu.add(showLocalIgnores);
 		menu.add(showGlobalIgnores);
+	}
+	protected void doWikiDelTest() {
+		SummaryEntry se = getSelectedEntry();
+		if (se != null) {
+			final String site = se.site;
+			final String id = se.id;
+			loadQuestionInBackground(site, id);
+		}
+	}
+	/**
+	 * @param site
+	 * @param id
+	 */
+	private void loadQuestionInBackground(final String site, final String id) {
+		exec.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					byte[] data = SOPageParsers.getAQuestionData("http://" + site, id);
+					QuestionEntry qe = SOPageParsers.processQuestionPage(data);
+					qe.site = site;
+					doUpdateListForWiki(qe, id, 1, 0);
+				} catch (ParserException ex) {
+					ex.printStackTrace();
+				} catch (HttpException e) {
+					e.printStackTrace();
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+	}
+	/** Retrieve wiki status for all listed entries. */
+	protected void doWikiDelTestAll() {
+		// once
+		if (wikiBackgroundTask.getIcon() != null) {
+			return;
+		}
+		final String[] sites = new String[model.questions.size()];
+		final String[] ids = new String [sites.length];
+		int i = 0;
+		for (SummaryEntry se : model.questions) {
+			sites[i] = se.site;
+			ids[i] = se.id;
+			i++;
+		}
+		wikiBackgroundTask.setIcon(rolling);
+		wikiBackgroundTask.setToolTipText("Analyzing all questions");
+		SwingWorker<Void, Void> sw = new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() throws Exception {
+				for (int i = 0; i < sites.length; i++) {
+					if (i > 0) {
+						TimeUnit.MILLISECONDS.sleep(250); // sleep to avoid overwhelming the site
+					}
+					byte[] data = SOPageParsers.getAQuestionData("http://" + sites[i], ids[i]);
+					QuestionEntry qe = SOPageParsers.processQuestionPage(data);
+					qe.site = sites[i];
+					doUpdateListForWiki(qe, ids[i], i + 1, sites.length);
+				}
+				return null;
+			}
+			@Override
+			protected void done() {
+				wikiBackgroundTask.setIcon(null);
+				wikiBackgroundTask.setText("");
+				wikiBackgroundTask.setToolTipText(null);
+			}
+		};
+		sw.execute();
+	}
+	/**
+	 * @param qe the question entry object, non null
+	 * @param originalId the original question id
+	 * @param index the current element index
+	 * @param total the total amount of work, zero to indicate no label
+	 */
+	protected void doUpdateListForWiki(final QuestionEntry qe, 
+			final String originalId, final int index, final int total) {
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				String id = qe.id;
+				boolean isDeleted = false;
+				if (id == null || id.length() == 0) {
+					id = originalId;
+					isDeleted = true;
+				}
+				// locate all questions with this id
+				for (SummaryEntry se : model.questions) {
+					if (se.site.equals(qe.site) && se.id.equals(id)) {
+						se.wiki = qe.wiki;
+						se.deleted = isDeleted; 
+					}
+				}
+				model.fireTableDataChanged();
+				if (total > 0) {
+					wikiBackgroundTask.setText(index + "/" + total);
+				}
+			}
+		});
 	}
 	/**
 	 * 
@@ -1127,6 +1259,8 @@ public class QuestionPanel extends JPanel {
 							updated++;
 						} else {
 							e.markRead = m.markRead;
+							e.wiki = m.wiki;
+//							e.deleted = m.deleted; //?
 						}
 						exists = true;
 					}

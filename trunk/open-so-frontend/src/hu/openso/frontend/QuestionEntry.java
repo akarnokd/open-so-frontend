@@ -5,6 +5,7 @@ import java.util.List;
 
 public class QuestionEntry {
 	public String id;
+	public String site;
 	public String title;
 	public int votes;
 	public int views;

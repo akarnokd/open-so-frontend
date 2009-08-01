@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class SummaryEntry implements Serializable {
-	private static final long serialVersionUID = 229286007057806052L;
+	private static final long serialVersionUID = 3448973759153684063L;
 	public String site;
 	public String id;
 	public int votes;
@@ -30,6 +30,7 @@ class SummaryEntry implements Serializable {
 	public Boolean wiki;
 	public int bounty;
 	public boolean markRead;
+	public boolean deleted;
 	@Override
 	public String toString() {
 		String result = "<entry>\r\n\t<id>" + id + "</id>\r\n\t<votes>" + votes + 

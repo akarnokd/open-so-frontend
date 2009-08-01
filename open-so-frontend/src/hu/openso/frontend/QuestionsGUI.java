@@ -58,9 +58,14 @@ public class QuestionsGUI extends JFrame {
 		tabs = new JTabbedPane();
 		getContentPane().setLayout(new BorderLayout());
 		getContentPane().add(tabs, BorderLayout.CENTER);
+		
 		QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 		tabs.insertTab("Questions " + (tabs.getTabCount() + 1), null, p, null, tabs.getTabCount());
-		tabs.setTabComponentAt(0, new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p));
+		TitleWithClose component = new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p);
+		p.setTabTitle(component);
+		
+		tabs.setTabComponentAt(0, component);
+		
 		tabs.addTab("+", null, EMPTY_PANEL, "Open new tab");
 		tabs.addChangeListener(new ChangeListener() {
 			@Override
@@ -86,7 +91,9 @@ public class QuestionsGUI extends JFrame {
 			disableTabChange = true;
 			QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 			tabs.insertTab("", null, component, null, tabs.getTabCount() - 1);
-			tabs.setTabComponentAt(tabs.getTabCount() - 2, new TitleWithClose("Questions " + (tabs.getTabCount() - 1), tabs, component));
+			TitleWithClose tabComponent = new TitleWithClose("Questions " + (tabs.getTabCount() - 1), tabs, component);
+			component.setTabTitle(tabComponent);
+			tabs.setTabComponentAt(tabs.getTabCount() - 2, tabComponent);
 			disableTabChange = false;
 			tabs.setSelectedIndex(tabs.getTabCount() - 2);
 		}
@@ -134,7 +141,9 @@ public class QuestionsGUI extends JFrame {
 							if (title == null) {
 								title = "Questions " + (i + 1);
 							}
-							tabs.setTabComponentAt(i, new TitleWithClose(title, tabs, component));
+							TitleWithClose tabTitle = new TitleWithClose(title, tabs, component);
+							component.setTabTitle(tabTitle);
+							tabs.setTabComponentAt(i, tabTitle);
 							component.initPanel(i, p);
 						}
 						disableTabChange = false;

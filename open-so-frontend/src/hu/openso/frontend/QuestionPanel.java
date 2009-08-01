@@ -116,6 +116,7 @@ public class QuestionPanel extends JPanel {
 	Map<String, String> globalIgnores;
 	IgnoreListGUI ignoreListGUI;
 	final IgnoreListGUI globalIgnoreListGUI;
+	private TitleWithClose tabTitle;
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -679,10 +680,18 @@ public class QuestionPanel extends JPanel {
 				doRemoveFromList();
 			}
 		});
+		JMenuItem unread = new JMenuItem("Unread");
+		unread.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doUnread();
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
+		menu.add(unread);
 		menu.addSeparator();
 		menu.add(removeFromList);
 		menu.addSeparator();
@@ -692,6 +701,18 @@ public class QuestionPanel extends JPanel {
 		menu.addSeparator();
 		menu.add(showLocalIgnores);
 		menu.add(showGlobalIgnores);
+	}
+	/**
+	 * 
+	 */
+	protected void doUnread() {
+		if (table.getSelectedRow() >= 0) {
+			int idx = table.convertRowIndexToModel(table.getSelectedRow());
+			SummaryEntry se = model.questions.get(idx);
+			se.markRead = false;
+			countUnreadAndSet();
+			model.fireTableRowsUpdated(idx, idx);
+		}		
 	}
 	/**
 	 * Removes the currently selected item from the view only.
@@ -778,6 +799,7 @@ public class QuestionPanel extends JPanel {
 		for (SummaryEntry se : model.questions) {
 			se.markRead = true;
 		}
+		countUnreadAndSet();
 		model.fireTableDataChanged();
 	}
 	protected void doRefreshCounter() {
@@ -866,20 +888,25 @@ public class QuestionPanel extends JPanel {
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			SummaryEntry se = model.questions.get(idx);
 			se.markRead = true;
+			countUnreadAndSet();
 			model.fireTableRowsUpdated(idx, idx);
 		}		
 	}
 	protected void doRetrieve(final int page) {
 		List<SwingWorker<Void, Void>> workers = new LinkedList<SwingWorker<Void, Void>>();
+		boolean once = true;
 		for (int i = 0; i < siteUrls.length; i++) {
 			JCheckBox cb = siteUrls[i];
 			JTextField tf = tags[i];
 			JLabel lbl = status[i];
 			if (cb.isSelected()) {
-				go.setIcon(rolling);
-				go.setEnabled(false);
-				more.setEnabled(false);
-				refreshTimer.stop();
+				if (once) {
+					go.setIcon(rolling);
+					go.setEnabled(false);
+					more.setEnabled(false);
+					tabTitle.setIcon(rolling);
+					refreshTimer.stop();
+				}
 				
 				final String tgs = tf.getText();
 				final String sorts = (String)sort.getSelectedItem();
@@ -905,7 +932,7 @@ public class QuestionPanel extends JPanel {
 				try {
 					byte[] data = null;
 					String s1 = sorts.substring(0, sorts.indexOf("-")); 
-					if (sorts.endsWith("-Q")) {
+					if (sorts.endsWith("-U")) {
 						if (tgs.length() > 0) {
 							String tgs1 = tgs.replaceAll("\\s", "+");
 							data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, page);
@@ -969,6 +996,7 @@ public class QuestionPanel extends JPanel {
 				@SuppressWarnings("unchecked")
 				List<SummaryEntry> list = (List<SummaryEntry>)oin.readObject();
 				model.questions.addAll(list);
+				countUnreadAndSet();
 				model.fireTableDataChanged();
 			} catch (IOException ex) {
 				ex.printStackTrace();
@@ -1032,6 +1060,7 @@ public class QuestionPanel extends JPanel {
 			ignoreListGUI.dispose();
 			ignoreListGUI = null;
 		}
+		refreshTimer.stop();
 	}
 	/**
 	 * @param siteStr
@@ -1096,6 +1125,7 @@ public class QuestionPanel extends JPanel {
 				adjusted = true;
 			}
 			go.setIcon(goImage);
+			tabTitle.setIcon(null);
 			go.setEnabled(true);
 			more.setEnabled(true);
 			// continue the refresh loop if it was selected
@@ -1105,6 +1135,7 @@ public class QuestionPanel extends JPanel {
 				refreshTimer.start();
 			}
 			totalLabel.setText(String.format("Total: %d", model.questions.size()));
+			countUnreadAndSet();
 		}
 	}
 	public SummaryEntry getSelectedEntry() {
@@ -1121,6 +1152,29 @@ public class QuestionPanel extends JPanel {
 				int idx = table.convertRowIndexToView(i);
 				table.getSelectionModel().setSelectionInterval(idx, idx);
 			}
+		}
+	}
+	/**
+	 * @param tabTitle the tabTitle to set
+	 */
+	public void setTabTitle(TitleWithClose tabTitle) {
+		this.tabTitle = tabTitle;
+	}
+	/**
+	 * @return the tabTitle
+	 */
+	public TitleWithClose getTabTitle() {
+		return tabTitle;
+	}
+	protected void countUnreadAndSet() {
+		if (tabTitle != null) {
+			int value = 0;
+			for (SummaryEntry se : model.questions) {
+				if (!se.markRead) {
+					value++;
+				}
+			}
+			tabTitle.setUnread(value);
 		}
 	}
 }

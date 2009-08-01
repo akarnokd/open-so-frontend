@@ -8,6 +8,7 @@ import java.awt.event.ActionListener;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -19,6 +20,10 @@ public class TitleWithClose extends JPanel {
 	private static final long serialVersionUID = 2314996247881493085L;
 	private final Component component;
 	private final JTabbedPane tabbed;
+	/**
+	 * The number of unread changes on the page.
+	 */
+	private final JLabel unread;
 	private String title;
 	private JLabel comp;
 
@@ -31,6 +36,9 @@ public class TitleWithClose extends JPanel {
 		setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 		comp = new JLabel(title);
 		add(comp);
+		add(Box.createHorizontalStrut(10));
+		unread = new JLabel();
+		add(unread);
 		add(Box.createHorizontalStrut(10));
 		add(Box.createHorizontalGlue());
 		
@@ -88,5 +96,23 @@ public class TitleWithClose extends JPanel {
 			tabbed.setSelectedIndex(i - 1);
 		}
 		tabbed.removeTabAt(i);
+	}
+	/**
+	 * Set icon on the label to signal retrieval processing.
+	 * @param icon the icon to set, null to unset
+	 */
+	public void setIcon(Icon icon) {
+		comp.setIcon(icon);
+	}
+	/**
+	 * Set the unread amount into the title listings
+	 * @param value the unread value, if 0, nothing is displayed
+	 */
+	public void setUnread(int value) {
+		if (value == 0) {
+			unread.setText("");
+		} else {
+			unread.setText("(" + value + ")");
+		}
 	}
 }

@@ -53,6 +53,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
@@ -394,6 +395,7 @@ public class QuestionPanel extends JPanel {
 				doTablePopupClick(e);
 			}
 		});
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		
 		
 		goImage = new ImageIcon(getClass().getResource("res/go.png"));
@@ -667,10 +669,19 @@ public class QuestionPanel extends JPanel {
 				doShowGlobalIgnores();
 			}
 		});
+		JMenuItem removeFromList = new JMenuItem("Remove");
+		removeFromList.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRemoveFromList();
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
+		menu.addSeparator();
+		menu.add(removeFromList);
 		menu.addSeparator();
 		menu.add(ignore);
 		menu.add(ignoreGlobal);
@@ -678,6 +689,16 @@ public class QuestionPanel extends JPanel {
 		menu.addSeparator();
 		menu.add(showLocalIgnores);
 		menu.add(showGlobalIgnores);
+	}
+	/**
+	 * Removes the currently selected item from the view only.
+	 */
+	protected void doRemoveFromList() {
+		if (table.getSelectedRow() >= 0) {
+			int idx = table.convertRowIndexToModel(table.getSelectedRow());
+			model.questions.remove(idx);
+			model.fireTableRowsDeleted(idx, idx);
+		}
 	}
 	/**
 	 * 
@@ -1017,6 +1038,7 @@ public class QuestionPanel extends JPanel {
 		int updated = 0;
 		int newer = 0;
 		readCheck = false;
+		SummaryEntry curr = getSelectedEntry();
 		if (!mergeVal) {
 			model.questions.addAll(summary);
 		} else {
@@ -1048,6 +1070,9 @@ public class QuestionPanel extends JPanel {
 			}
 		}
 		model.fireTableDataChanged();
+		if (curr != null) {
+			setSelectedEntry(curr.id);
+		}
 		readCheck = true;
 		
 		statusLabel.setText(String.format("U: %d, N: %d", updated, newer));
@@ -1067,6 +1092,22 @@ public class QuestionPanel extends JPanel {
 				refreshTimer.start();
 			}
 			totalLabel.setText(String.format("Total: %d", model.questions.size()));
+		}
+	}
+	public SummaryEntry getSelectedEntry() {
+		int idx = table.getSelectedRow();
+		if (idx >= 0) {
+			return model.questions.get(table.convertRowIndexToModel(idx));
+		}
+		return null;
+	}
+	public void setSelectedEntry(String id) {
+		for (int i = 0; i < model.questions.size(); i++) {
+			SummaryEntry se = model.questions.get(i);
+			if (se.id.equals(id)) {
+				int idx = table.convertRowIndexToView(i);
+				table.getSelectionModel().setSelectionInterval(idx, idx);
+			}
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package hu.openso.frontend;
 
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
@@ -25,43 +24,17 @@ import org.htmlparser.util.ParserException;
 import org.htmlparser.util.SimpleNodeIterator;
 
 public class SOPageParsers {
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) throws Exception {
-//		getJavaQuestions();
-		NodeList lst = parseMainPage();
-		SimpleNodeIterator nit = lst.elements();
-		List<SummaryEntry> list = new ArrayList<SummaryEntry>();
-		while (nit.hasMoreNodes()) {
-			Node n = nit.nextNode();
-			if (n instanceof Tag) {
-				Tag t = (Tag)n;
-				if ("div".equalsIgnoreCase(t.getTagName())) {
-					String id = t.getAttribute("id");
-					if (id != null && id.startsWith("question-summary-")) {
-						String questionId = id.substring("question-summary-".length());
-						SummaryEntry se = new SummaryEntry();
-						se.id = questionId;
-						processListingsPage(se, t);
-						list.add(se);
-					}
-				}
-			}
-		}
-
-//		System.out.println(list);
-		
-		lst = parseQuestionPage();
-		QuestionEntry qe = new QuestionEntry();
-		processQuestionPage(qe, (Tag)lst.elementAt(0));
-		System.out.println(qe);
-	}
 	static final Charset UTF_8;
 	static {
 		UTF_8 = Charset.forName("UTF-8");
 	}
-	static List<SummaryEntry> processMainPage(byte[] data) throws ParserException {
+	/**
+	 * Processes the main page data and returns a list of summary entry objects.
+	 * @param data the raw data to parse and process
+	 * @return the list of summary entry objects, not null
+	 * @throws ParserException if a HTML parsing problem occurs
+	 */
+	public static List<SummaryEntry> processMainPage(byte[] data) throws ParserException {
 		Parser html = new Parser(new String(data, UTF_8));
 		// filter question summaries
 		NodeList lst = html.parse(new NodeFilter() {
@@ -100,43 +73,6 @@ public class SOPageParsers {
 		}
 		return list;
 	}
-	static NodeList parseMainPage() throws ParserException {
-		Parser html = new Parser("so.html");
-		// filter question summaries
-		NodeList lst = html.parse(new NodeFilter() {
-			private static final long serialVersionUID = -4798449277408336566L;
-			@Override
-			public boolean accept(Node node) {
-				if (node instanceof Tag) {
-					Tag t = (Tag)node;
-					if ("div".equalsIgnoreCase(t.getTagName())) {
-						String id = t.getAttribute("id");
-						if (id != null && id.startsWith("question-summary-")) {
-							return true;
-						}
-					}
-				}
-				return false;
-			}
-		});
-		return lst;
-	}
-	static NodeList parseQuestionPage() throws ParserException {
-		Parser html = new Parser("so-question.html");
-		// filter question summaries
-		NodeList lst = html.parse(new NodeFilter() {
-			private static final long serialVersionUID = -4798449277408336566L;
-			@Override
-			public boolean accept(Node node) {
-				if (node instanceof Tag) {
-					Tag t = (Tag)node;
-					return "body".equalsIgnoreCase(t.getTagName());
-				}
-				return false;
-			}
-		});
-		return lst;
-	}
 	static byte[] getQuestionsData(String site, String tags, String sort
 			, int page) throws IOException, HttpException,
 			FileNotFoundException {
@@ -150,16 +86,13 @@ public class SOPageParsers {
 		} else {
 			method = new GetMethod(site + "/questions?page=" + page + "&sort=" + sort + "&pagesize=50");
 		}
-//		long t = System.currentTimeMillis();
-//		int code = 
-			client.executeMethod(method);
-//		System.out.printf("%d (%s ms)%n", code, System.currentTimeMillis() - t);
+		client.executeMethod(method);
 		
 		byte[] data = method.getResponseBody();
 		method.releaseConnection();
 		return data;
 	}
-	static byte[] getUnansweredData(String site, String tags, String sort
+	public static byte[] getUnansweredData(String site, String tags, String sort
 			, int page) throws IOException, HttpException,
 			FileNotFoundException {
 		HttpClient client = new HttpClient();
@@ -172,25 +105,21 @@ public class SOPageParsers {
 		} else {
 			method = new GetMethod(site + "/unanswered?page=" + page + "&tab=" + sort + "&pagesize=50");
 		}
-//		long t = System.currentTimeMillis();
-//		int code = 
-			client.executeMethod(method);
-//		System.out.printf("%d (%s ms)%n", code, System.currentTimeMillis() - t);
+		client.executeMethod(method);
 		
 		byte[] data = method.getResponseBody();
 		method.releaseConnection();
 		return data;
 	}
 
-	static void getAQuestion(String site, String id) throws IOException, HttpException,
+	public static byte[] getAQuestionData(String site, String id) throws IOException, HttpException,
 	FileNotFoundException {
 		HttpClient client = new HttpClient();
 		HttpMethod method = new GetMethod(site + "/questions/" + id);
 		client.executeMethod(method);
-		FileOutputStream fout = new FileOutputStream("so-question-" + id + ".html");
-		fout.write(method.getResponseBody());
-		fout.close();
+		byte[] data = method.getResponseBody();
 		method.releaseConnection();
+		return data;
 	}
 
 	protected static boolean testUser(Tag t) {
@@ -494,58 +423,83 @@ public class SOPageParsers {
 		QUESTION,
 		ANSWER
 	}
-	static void processQuestionPage(final QuestionEntry qe, Tag t) {
-		final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-		sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
-		visitor(t, new Associator() {
-			QuestionMode mode = QuestionMode.QUESTION;
+	/**
+	 * Processes the raw question page data and returns a QuestionEntry object for it.
+	 * If there was some trouble in the parsing (e.g. wrong page), the
+	 * returned QuestionEntry objects id field is null.
+	 * @param data the data to process
+	 * @return the question entry object.
+	 * @throws ParserException
+	 */
+	public static QuestionEntry processQuestionPage(byte[] data) throws ParserException {
+		final QuestionEntry qe = new QuestionEntry();
+		Parser html = new Parser(new String(data, UTF_8));
+		// filter question summaries
+		NodeList lst = html.parse(new NodeFilter() {
+			private static final long serialVersionUID = -4798449277408336566L;
 			@Override
-			public void associate(Tag t) {
-				if (tagWithAttrContains(t, "div", "id", "answers")) {
-					mode = QuestionMode.ANSWER;
+			public boolean accept(Node node) {
+				if (node instanceof Tag) {
+					Tag t = (Tag)node;
+					return "body".equalsIgnoreCase(t.getTagName());
 				}
-				if (mode == QuestionMode.QUESTION) {
-					if (tagWithAttrRegex(t, "a", "href", "\\/questions\\/\\d+\\/.*")) {
-						String r = t.getAttribute("href");
-						qe.id = r.substring(11, r.indexOf('/', 12));
-						qe.title = getTextOf(t);
-					} else
-					if (tagWithAttrContains(t, "span", "class", "vote-count-post")) {
-						qe.votes = Integer.parseInt(getNumberFrom(t).trim());
-					} else
-					if (tagWithAttrContains(t, "div", "class", "favoritecount")) {
-						String s = getTextOf(t).trim();
-						qe.favorite = s.length() > 0 ? Integer.parseInt(getNumberFrom(s)) : 0;
-					} else
-					if (tagWithAttrStarts(t, "div", "class", "post-text")) {
-						qe.post = t.getChildren().toHtml();
-					} else
-					if (tagWithAttrIs(t, "td", "class", "post-signature")) {
-						analyzeEditor(qe, t, sdf);
-					} else
-					if (tagWithAttrContains(t, "td", "class", "post-signature owner")) {
-						analyzeCreator(qe, t, sdf);
-					} else
-					if (tagWithAttrContains(t, "a", "title", "questions tagged")) {
-						qe.tags.add(getTextOf(t));
-					} else
-					if (tagWithAttrContains(t, "span", "class", "community-wiki")) {
-						qe.wiki = true;
-					}
-				} else
-				if (mode == QuestionMode.ANSWER) {
-					if (tagWithAttrStarts(t, "div", "id", "answer-")) {
-						processQuestionAnswer(qe, t, sdf);
-					}
-				}
-				if (tagWithAttrContains(t, "p", "class", "label-value")) {
-					String s = getTextOf(t);
-					if (s.matches("\\d+\\s+time.*")) {
-						qe.views = Integer.parseInt(s.substring(0, s.indexOf(' ')));
-					}
-				}
+				return false;
 			}
 		});
+		if (lst.size() >= 1) {
+			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+			visitor((Tag)lst.elementAt(0), new Associator() {
+				QuestionMode mode = QuestionMode.QUESTION;
+				@Override
+				public void associate(Tag t) {
+					if (tagWithAttrContains(t, "div", "id", "answers")) {
+						mode = QuestionMode.ANSWER;
+					}
+					if (mode == QuestionMode.QUESTION) {
+						if (tagWithAttrRegex(t, "a", "href", "\\/questions\\/\\d+\\/.*")) {
+							String r = t.getAttribute("href");
+							qe.id = r.substring(11, r.indexOf('/', 12));
+							qe.title = getTextOf(t);
+						} else
+						if (tagWithAttrContains(t, "span", "class", "vote-count-post")) {
+							qe.votes = Integer.parseInt(getNumberFrom(t).trim());
+						} else
+						if (tagWithAttrContains(t, "div", "class", "favoritecount")) {
+							String s = getTextOf(t).trim();
+							qe.favorite = s.length() > 0 ? Integer.parseInt(getNumberFrom(s)) : 0;
+						} else
+						if (tagWithAttrStarts(t, "div", "class", "post-text")) {
+							qe.post = t.getChildren().toHtml();
+						} else
+						if (tagWithAttrIs(t, "td", "class", "post-signature")) {
+							analyzeEditor(qe, t, sdf);
+						} else
+						if (tagWithAttrContains(t, "td", "class", "post-signature owner")) {
+							analyzeCreator(qe, t, sdf);
+						} else
+						if (tagWithAttrContains(t, "a", "title", "questions tagged")) {
+							qe.tags.add(getTextOf(t));
+						} else
+						if (tagWithAttrContains(t, "span", "class", "community-wiki")) {
+							qe.wiki = true;
+						}
+					} else
+					if (mode == QuestionMode.ANSWER) {
+						if (tagWithAttrStarts(t, "div", "id", "answer-")) {
+							processQuestionAnswer(qe, t, sdf);
+						}
+					}
+					if (tagWithAttrContains(t, "p", "class", "label-value")) {
+						String s = getTextOf(t);
+						if (s.matches("\\d+\\s+time.*")) {
+							qe.views = Integer.parseInt(s.substring(0, s.indexOf(' ')));
+						}
+					}
+				}
+			});
+		}
+		return qe;
 	}
 	protected static void processQuestionAnswer(final QuestionEntry qe, Tag t,
 			final SimpleDateFormat sdf) {

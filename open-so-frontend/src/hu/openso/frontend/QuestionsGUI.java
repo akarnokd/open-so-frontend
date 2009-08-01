@@ -27,12 +27,12 @@ import javax.swing.event.ChangeListener;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.57";
+	static final String version = "0.6";
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
-	ExecutorService exec = Executors.newCachedThreadPool();
+	ExecutorService exec = Executors.newFixedThreadPool(5);
 	/** The global ignore table for site/id. */
 	Map<String, String> globalIgnores = new LinkedHashMap<String, String>();
 	JTabbedPane tabs;

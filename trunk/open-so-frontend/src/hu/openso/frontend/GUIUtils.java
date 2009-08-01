@@ -65,7 +65,7 @@ public final class GUIUtils {
             SwingConstants.LEFT);
  
         // table.setAutoCreateRowSorter(true);
-        table.getTableHeader().setReorderingAllowed(false);
+//        table.getTableHeader().setReorderingAllowed(false);
  
 //        for (int i = 0; i < table.getColumnCount(); i++) {
 //            TableColumn column = table.getColumnModel().getColumn(i);

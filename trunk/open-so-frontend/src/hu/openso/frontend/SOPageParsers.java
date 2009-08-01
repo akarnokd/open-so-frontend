@@ -222,6 +222,7 @@ public class SOPageParsers {
 		.replaceAll("&quot;", "\"")
 		.replaceAll("&apos;", "'")
 		.replaceAll("&hellip;", "\u2026")
+		.replaceAll("&mdash;", "\u2014")
 		;
 	}
 	private static void processListingsPage(final SummaryEntry se, Tag t) {

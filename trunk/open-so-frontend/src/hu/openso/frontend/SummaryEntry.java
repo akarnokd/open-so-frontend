@@ -3,10 +3,12 @@
  */
 package hu.openso.frontend;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-class SummaryEntry {
+class SummaryEntry implements Serializable {
+	private static final long serialVersionUID = 229286007057806052L;
 	public String site;
 	public String id;
 	public int votes;

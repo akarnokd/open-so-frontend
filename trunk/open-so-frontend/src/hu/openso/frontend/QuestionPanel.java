@@ -17,7 +17,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -62,6 +66,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+
+import org.apache.commons.codec.binary.Base64;
 
 public class QuestionPanel extends JPanel {
 	private static final long serialVersionUID = 2165339317109256363L;
@@ -919,6 +925,24 @@ public class QuestionPanel extends JPanel {
 			}
 		}
 		doLoadColumnWidths(panelIndex, p);
+		
+		String ql = p.getProperty("P" + panelIndex + "-" + "Questions");
+		if (ql != null) {
+			try {
+				ByteArrayInputStream bin = new ByteArrayInputStream(
+						Base64.decodeBase64(ql.getBytes("ISO-8859-1")));
+				ObjectInputStream oin = new ObjectInputStream(bin);
+				@SuppressWarnings("unchecked")
+				List<SummaryEntry> list = (List<SummaryEntry>)oin.readObject();
+				model.questions.addAll(list);
+				model.fireTableDataChanged();
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			} catch (ClassNotFoundException ex) {
+				ex.printStackTrace();
+			}
+		}
+		
 		doExcerptToggle();
 		doRefreshToggle();
 	}
@@ -958,6 +982,21 @@ public class QuestionPanel extends JPanel {
 			p.setProperty("P" + panelIndex + "-" + "Ignore" + i, e.getKey());
 			p.setProperty("P" + panelIndex + "-" + "IgnoreTitle" + i, e.getValue());
 			i++;
+		}
+		// save the current list of records to be restored on load
+		ByteArrayOutputStream bout = new ByteArrayOutputStream(16 * 1024);
+		try {
+			ObjectOutputStream os = new ObjectOutputStream(bout);
+			os.writeObject(model.questions);
+			os.close();
+			p.setProperty("P" + panelIndex + "-" + "Questions", 
+					new String(Base64.encodeBase64(bout.toByteArray(), true), "ISO-8859-1"));
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+		if (ignoreListGUI != null) {
+			ignoreListGUI.dispose();
+			ignoreListGUI = null;
 		}
 	}
 	/**

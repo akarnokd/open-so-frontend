@@ -1,0 +1,15 @@
+#summary This page contains the change history of the application
+#labels Featured
+
+== Version 0.57 ==
+2009-08-01 18:38Z UTC
+
+  * Added the ability to unread entries
+  * Added the ability to get unanswered/newest and unanswered/votes
+  * Added feedback to the tab title for retrieve in progress and number of unread items
+
+== Version 0.55 ==
+2009-08-01 ~16:00Z UTC
+
+  * Changed to single selection on the table to avoid confusion
+  * The application now saves the current list status and restores it on next run

@@ -10,4 +10,5 @@ Please add your feature requests as comments below. I'll try to not say *status-
 || *Date* || *Description* || *Status* ||
 || 2009-08-01 17:00 || Ability to run the program on Java 1.5 || Considering (2009-08-01 19:35) ||
 || 2009-08-01 19:35 || Multi-language interface || Planned (2009-08-01 19:35) ||
-|| 2009-08-01 20:37 || Save reordered table columns || Completed-SVN (2009-08-01 20:37) ||
+|| 2009-08-01 20:37 || Save reordered table columns || Completed-0.6 (2009-08-01 22:20) ||
+|| 2009-08-01 22:20 || Display if a question is community wiki || Completed-0.6 (2009-08-01 22:20) ||

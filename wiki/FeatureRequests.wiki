@@ -1,0 +1,12 @@
+#summary Collects feature requests and their implementation status
+#labels Featured,Phase-Requirements
+
+= Introduction =
+
+Please add your feature requests as comments below. I'll try to not say *status-declined* ( but as this is an open-source project, you can do pretty much anything for yourself). Times in UTC.
+
+= Feature requests =
+
+|| *Date* || *Description* || *Status* ||
+|| 2009-08-01 17:00 || Ability to run the program on Java 1.5 || Considering (2009-08-01 19:35) ||
+|| 2009-08-01 19:35 || Multi-language interface || Planned (2009-08-01 19:35) ||

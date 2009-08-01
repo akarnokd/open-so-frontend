@@ -1,6 +1,12 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.6 ==
+2009-08-01 22:19Z UTC
+
+  * Added the popup menu entry for analyzing questions for wikiness/deleteness.
+  * Minor bug fixes
+
 == Version 0.57 ==
 2009-08-01 18:38Z UTC
 

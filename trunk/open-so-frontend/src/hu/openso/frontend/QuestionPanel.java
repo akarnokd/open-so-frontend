@@ -67,6 +67,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 
 import org.apache.commons.codec.binary.Base64;
 
@@ -1010,6 +1012,28 @@ public class QuestionPanel extends JPanel {
 	}
 	private void doLoadColumnWidths(int panelIndex, Properties p) {
 		boolean firstTime = true;
+
+		TableColumnModel tcm = table.getTableHeader().getColumnModel();
+		int[] cols = new int[table.getColumnCount()];
+		TableColumn[] tcs = new TableColumn[cols.length];
+		for (int i = 0; i < table.getColumnCount(); i++) {
+			String mi = p.getProperty("P" + panelIndex + "-" + "ColumnIndex" + i);
+			if (mi != null) {
+				cols[i] = Integer.parseInt(mi);
+			}
+			tcs[i] = tcm.getColumn(i);
+		}
+		for (int i = 0; i < cols.length; i++) {
+			int j = 0;
+			for (int k = 0; k < cols.length; k++) {
+				if (tcm.getColumn(k).getModelIndex() == cols[i]) {
+					j = k;
+					break;
+				}
+			}
+			tcm.moveColumn(j, i);
+		}
+		
 		for (int i = 0; i < model.getColumnCount(); i++) {
 			String s = p.getProperty("P" + panelIndex + "-" + "Column" + i);
 			if (s != null) {
@@ -1026,7 +1050,10 @@ public class QuestionPanel extends JPanel {
 	}
 	private void doSaveColumnWidths(int panelIndex, Properties p) {
 		for (int i = 0; i < model.getColumnCount(); i++) {
-			p.setProperty("P" + panelIndex + "-" + "Column" + i, Integer.toString(table.getColumnModel().getColumn(i).getWidth()));
+			TableColumn tc = table.getTableHeader().getColumnModel().getColumn(i);
+			p.setProperty("P" + panelIndex + "-" + "Column" + i, Integer.toString(tc.getWidth()));
+			int j = tc.getModelIndex();
+			p.setProperty("P" + panelIndex + "-" + "ColumnIndex" + i, Integer.toString(j));
 		}
 	}
 	public void donePanel(int panelIndex, Properties p) {

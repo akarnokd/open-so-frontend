@@ -402,7 +402,7 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		
+		table.getTableHeader().setReorderingAllowed(true);
 		
 		goImage = new ImageIcon(getClass().getResource("res/go.png"));
 		go = new JButton(goImage);

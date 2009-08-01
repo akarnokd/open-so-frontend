@@ -137,16 +137,6 @@ public class SOPageParsers {
 		});
 		return lst;
 	}
-	static void getQuestions(String site, String tags) throws IOException, HttpException,
-			FileNotFoundException {
-		HttpClient client = new HttpClient();
-		HttpMethod method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=1&sort=active&pagesize=50");
-		client.executeMethod(method);
-		FileOutputStream fout = new FileOutputStream("so.html");
-		fout.write(method.getResponseBody());
-		fout.close();
-		method.releaseConnection();
-	}
 	static byte[] getQuestionsData(String site, String tags, String sort
 			, int page) throws IOException, HttpException,
 			FileNotFoundException {
@@ -159,6 +149,28 @@ public class SOPageParsers {
 			method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=" + page + "&sort=" + sort + "&pagesize=50");
 		} else {
 			method = new GetMethod(site + "/questions?page=" + page + "&sort=" + sort + "&pagesize=50");
+		}
+//		long t = System.currentTimeMillis();
+//		int code = 
+			client.executeMethod(method);
+//		System.out.printf("%d (%s ms)%n", code, System.currentTimeMillis() - t);
+		
+		byte[] data = method.getResponseBody();
+		method.releaseConnection();
+		return data;
+	}
+	static byte[] getUnansweredData(String site, String tags, String sort
+			, int page) throws IOException, HttpException,
+			FileNotFoundException {
+		HttpClient client = new HttpClient();
+		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
+	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
+		
+		HttpMethod method = null;
+		if (tags != null) {
+			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + tags + "&page=" + page + "&tab=" + sort + "&pagesize=50");
+		} else {
+			method = new GetMethod(site + "/unanswered?page=" + page + "&tab=" + sort + "&pagesize=50");
 		}
 //		long t = System.currentTimeMillis();
 //		int code = 

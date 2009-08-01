@@ -81,6 +81,7 @@ public class QuestionPanel extends JPanel {
 	ImageIcon okay;
 	ImageIcon unknown;
 	ImageIcon wiki;
+	@SaveValue
 	JComboBox sort;
 	JButton more;
 	JButton clear;
@@ -357,8 +358,10 @@ public class QuestionPanel extends JPanel {
 		gl.setAutoCreateContainerGaps(true);
 		gl.setAutoCreateGaps(true);
 		
-		sort = new JComboBox(new String[] { "", "newest", "featured", "hot", "votes", "active" });		
-		sort.setSelectedIndex(sort.getItemCount() - 1);
+		sort = new JComboBox(new String[] { 
+			"newest-Q", "featured-Q", "hot-Q", "votes-Q", "active-Q", // on the questions page
+			"newest-U", "votes-U" }); // on the unanswered page		
+		sort.setSelectedItem("active-Q");
 		model = new QuestionModel();
 		table = new JTable(model);
 		table.setRowHeight(32);
@@ -901,11 +904,21 @@ public class QuestionPanel extends JPanel {
 			protected Void doInBackground() throws Exception {
 				try {
 					byte[] data = null;
-					if (tgs.length() > 0) {
-						String tgs1 = tgs.replaceAll("\\s", "+");
-						data = SOPageParsers.getQuestionsData(siteStr, tgs1, sorts, page);
+					String s1 = sorts.substring(0, sorts.indexOf("-")); 
+					if (sorts.endsWith("-Q")) {
+						if (tgs.length() > 0) {
+							String tgs1 = tgs.replaceAll("\\s", "+");
+							data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, page);
+						} else {
+							data = SOPageParsers.getUnansweredData(siteStr, null, s1, page);
+						}
 					} else {
-						data = SOPageParsers.getQuestionsData(siteStr, null, sorts, page);
+						if (tgs.length() > 0) {
+							String tgs1 = tgs.replaceAll("\\s", "+");
+							data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, page);
+						} else {
+							data = SOPageParsers.getQuestionsData(siteStr, null, s1, page);
+						}
 					}
 					;
 					summary = SOPageParsers.processMainPage(data);

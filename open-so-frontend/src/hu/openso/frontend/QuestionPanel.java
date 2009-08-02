@@ -20,7 +20,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -73,8 +72,6 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableColumnModel;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.httpclient.HttpException;
-import org.htmlparser.util.ParserException;
 
 public class QuestionPanel extends JPanel {
 	private static final long serialVersionUID = 2165339317109256363L;
@@ -1006,37 +1003,15 @@ public class QuestionPanel extends JPanel {
 		GUIUtils.autoResizeColWidth(table, model);
 	}
 	protected void doWikiDelTest() {
+		if (wikiBackgroundTask.getIcon() != null) {
+			return;
+		}
 		SummaryEntry se = getSelectedEntry();
 		if (se != null) {
 			final String site = se.site;
 			final String id = se.id;
-			loadQuestionInBackground(site, id);
+			doProcessWikiBackground(Collections.singletonList(site), Collections.singletonList(id));
 		}
-	}
-	/**
-	 * @param site
-	 * @param id
-	 */
-	private void loadQuestionInBackground(final String site, final String id) {
-		qcontext.exec.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					byte[] data = SOPageParsers.getAQuestionData("http://" + site, id);
-					QuestionEntry qe = SOPageParsers.processQuestionPage(data);
-					qe.site = site;
-					doUpdateListForWiki(qe, id, 1, 0);
-				} catch (ParserException ex) {
-					ex.printStackTrace();
-				} catch (HttpException e) {
-					e.printStackTrace();
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		});
 	}
 	/**
 	 * @param qe the question entry object, non null

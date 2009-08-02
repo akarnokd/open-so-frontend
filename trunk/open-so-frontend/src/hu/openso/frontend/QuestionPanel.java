@@ -463,6 +463,7 @@ public class QuestionPanel extends JPanel {
 				}
 			});
 			siteIconLabels[i].setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+			status[i].setVisible(false);
 		}
 		
 		wikiBackgroundTask = new JLabel();
@@ -1500,6 +1501,7 @@ public class QuestionPanel extends JPanel {
 		readCheck = true;
 		
 		statusLabel.setText(String.format("U: %d, N: %d", updated, newer));
+		statusLabel.setVisible(true);
 		if (retrieveWip.decrementAndGet() == 0) {
 			// the last will restore the button status
 			if (!summary.isEmpty() && !adjusted) {

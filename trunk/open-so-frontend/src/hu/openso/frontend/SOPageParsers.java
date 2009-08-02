@@ -572,4 +572,37 @@ public class SOPageParsers {
 		.replaceAll("&mdash;", "\u2014")
 		;
 	}
+	/**
+	 * Determine the current on-line version of the frontend
+	 * @return the online version string or empty if there was an error
+	 */
+	public static String getOnlineVersion() {
+		String ver = "";
+		try {
+			Parser html = new Parser("http://code.google.com/p/open-so-frontend/");
+			NodeList nl = html.parse(new NodeFilter() {
+				private static final long serialVersionUID = 4628298108041398258L;
+
+				@Override
+				public boolean accept(Node node) {
+					if (node instanceof Tag) {
+						Tag t = (Tag)node;
+						if (t.getTagName().equalsIgnoreCase("h1")) {
+							if (getTextOf(t).contains("Current version:")) {
+								return true;
+							}
+						}
+					}
+					return false;
+				}
+			});
+			if (nl.size() >= 1) {
+				String s = getTextOf((Tag)nl.elementAt(0));
+				ver = s.substring(s.lastIndexOf(' ') + 1).trim();
+			}
+		} catch (ParserException ex) {
+			ex.printStackTrace();
+		}
+		return ver;
+	}
 }

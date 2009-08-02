@@ -941,7 +941,7 @@ public class QuestionPanel extends JPanel {
 		final List<String> sites = new ArrayList<String>();
 		final List<String> ids = new ArrayList<String>();
 		for (SummaryEntry se : model.questions) {
-			if (se.wiki == null && !se.deleted) {
+			if ((se.wiki == null && !qcontext.knownWikis.containsKey(se.site + "/" + se.id)) && !se.deleted) {
 				sites.add(se.site);
 				ids.add(se.id);
 			}

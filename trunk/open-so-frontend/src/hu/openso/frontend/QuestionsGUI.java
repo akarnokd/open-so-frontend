@@ -2,6 +2,7 @@ package hu.openso.frontend;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.Desktop;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -11,6 +12,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,15 +27,17 @@ import java.util.zip.GZIPOutputStream;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFrame;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.62";
+	static final String version = "0.63";
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
@@ -149,6 +154,7 @@ public class QuestionsGUI extends JFrame {
 				setLocationRelativeTo(null);
 				initConfig();
 				setVisible(true);
+				doVersionCheck();
 			}
 		});
 	}
@@ -406,5 +412,39 @@ public class QuestionsGUI extends JFrame {
 		globalIgnoreListGUI.dispose();
 		globalIgnoreListGUI = null;
 		doneConfig();
+	}
+	protected void doVersionCheck() {
+		SwingWorker<Void, Void> verWorker = new SwingWorker<Void, Void>() {
+			private String ver;
+			@Override
+			protected Void doInBackground() throws Exception {
+				ver = SOPageParsers.getOnlineVersion();
+				return null;
+			}
+			@Override
+			protected void done() {
+				if (ver.length() > 0 && ver.compareTo(version) > 0) {
+					if (JOptionPane.showConfirmDialog(QuestionsGUI.this, 
+							"<html><center>A newer version of the Open Stack Overflow Frontend is available:"
+							+ "<br><font style='size: 16pt;'>" 
+							+ ver + "</font><br>Do you want to download it?",
+							"Open Stack Overflow Frontend " + version,
+							JOptionPane.YES_NO_OPTION
+							) == JOptionPane.YES_OPTION) {
+						try {
+							Desktop d = Desktop.getDesktop();
+							if (d != null) {
+								d.browse(new URI("http://code.google.com/p/open-so-frontend/"));
+							}
+						} catch (IOException ex) {
+							ex.printStackTrace();
+						} catch (URISyntaxException ex) {
+							ex.printStackTrace();
+						}
+					}
+				}
+			}
+		};
+		verWorker.execute();
 	}
 }

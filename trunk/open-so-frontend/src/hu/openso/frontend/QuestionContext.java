@@ -24,7 +24,7 @@ public class QuestionContext {
 	public ExecutorService exec; 
 	public Map<String, String> globalIgnores; 
 	public IgnoreListGUI globalIgnoreListGUI;
-	public Map<String, String> knownWikis;
+	public Map<String, Boolean> knownWikis;
 	/**
 	 * @param avatars the avatars to set
 	 */
@@ -70,7 +70,7 @@ public class QuestionContext {
 	/**
 	 * @param knownWikis the knownWikis to set
 	 */
-	public QuestionContext setKnownWikis(Map<String, String> knownWikis) {
+	public QuestionContext setKnownWikis(Map<String, Boolean> knownWikis) {
 		this.knownWikis = knownWikis;
 		return this;
 	}

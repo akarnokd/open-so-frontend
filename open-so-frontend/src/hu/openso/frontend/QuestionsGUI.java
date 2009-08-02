@@ -5,9 +5,12 @@ import java.awt.Component;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -15,6 +18,8 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
@@ -206,7 +211,14 @@ public class QuestionsGUI extends JFrame {
 	/** Initialize the window based on the configuration file. */
 	private void initConfig() {
 		try {
-			FileInputStream in = new FileInputStream("config.xml");
+			File cx = new File("config.xml.gz");
+			InputStream in = null;
+			// open compressed config if there is one
+			if (cx.exists()) {
+			    in = new GZIPInputStream(new FileInputStream(cx), 4096);
+			} else {
+				in = new FileInputStream("config.xml");
+			}
 			try {
 				Properties p = new Properties();
 				p.loadFromXML(in);
@@ -372,7 +384,11 @@ public class QuestionsGUI extends JFrame {
 				i++;
 			}
 			
-			FileOutputStream out = new FileOutputStream("config.xml");
+			File cx = new File("config.xml");
+			if (cx.exists()) {
+				cx.delete();
+			}
+			OutputStream out = new GZIPOutputStream(new FileOutputStream("config.xml.gz"), 4096);
 			try {
 				p.storeToXML(out, "");
 			} finally {

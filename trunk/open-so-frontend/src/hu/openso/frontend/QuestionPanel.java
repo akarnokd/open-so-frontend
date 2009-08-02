@@ -82,6 +82,8 @@ public class QuestionPanel extends JPanel {
 	JButton go;
 	@SaveValue
 	JTextField page;
+	@SaveValue
+	JTextField pageSize;
 	ImageIcon rolling;
 	ImageIcon okay;
 	ImageIcon unknown;
@@ -414,7 +416,7 @@ public class QuestionPanel extends JPanel {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				page.setText("1");
-				doRetrieve(1);
+				doRetrieve(1, getPageSize());
 			}
 		};
 		go.addActionListener(doRetrieveAction);
@@ -446,7 +448,13 @@ public class QuestionPanel extends JPanel {
 		wikiBackgroundTask = new JLabel();
 		
 		page = new JFormattedTextField(1);
-		page.setColumns(4);
+		page.setColumns(2);
+		page.setToolTipText("The current page index");
+		
+		pageSize = new JFormattedTextField(15);
+		pageSize.setColumns(3);
+		pageSize.setToolTipText("The page size length between 1 and 50");
+		
 		more = new JButton(new ImageIcon(getClass().getResource("res/more.png")));
 		more.setToolTipText("Read the Nth page of the selected sites and subpages");
 		more.addActionListener(new ActionListener() {
@@ -536,6 +544,7 @@ public class QuestionPanel extends JPanel {
 						.addComponent(go)
 						.addComponent(markAsRead)
 						.addComponent(page, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(pageSize, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 						.addComponent(more)
 						.addComponent(clear)
 					)
@@ -592,6 +601,7 @@ public class QuestionPanel extends JPanel {
 						.addComponent(go, 25, 25, 25)
 						.addComponent(markAsRead)
 						.addComponent(page)
+						.addComponent(pageSize)
 						.addComponent(more)
 						.addComponent(clear)
 					)
@@ -609,7 +619,7 @@ public class QuestionPanel extends JPanel {
 				pg2
 			)
 		);
-		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, clear));
+		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, pageSize, clear));
 		for (int i = 0; i < siteUrls.length; i++) {
 			comps.add(siteIconLabels[i]);
 			comps.add(siteUrls[i]);
@@ -951,7 +961,7 @@ public class QuestionPanel extends JPanel {
 		refreshCounter--;
 		setRefreshLabel();
 		if (refreshCounter <= 0) {
-			doRetrieve(1);
+			doRetrieve(1, getPageSize());
 		}
 	}
 	private void setRefreshLabel() {
@@ -1004,10 +1014,17 @@ public class QuestionPanel extends JPanel {
 			repaint();
 		}
 	}
+	protected int getPageSize() {
+		int ps = 15;
+		if (!"".equals(pageSize.getText())) {
+			ps = Integer.parseInt(pageSize.getText().trim());
+		}
+		return ps;
+	}
 	protected void doGetMore() {
 		if (!"".equals(page.getText())) {
 			int i = Integer.parseInt(page.getText().trim());
-			doRetrieve(i + 1);
+			doRetrieve(i + 1, getPageSize());
 			page.setText(Integer.toString(i + 1));
 		}
 	}
@@ -1037,7 +1054,12 @@ public class QuestionPanel extends JPanel {
 			model.fireTableRowsUpdated(idx, idx);
 		}		
 	}
-	protected void doRetrieve(final int page) {
+	/**
+	 * Retrieve a page indexed.
+	 * @param page the page index
+	 * @param ps the page size
+	 */
+	protected void doRetrieve(final int page, final int ps) {
 		List<SwingWorker<Void, Void>> workers = new LinkedList<SwingWorker<Void, Void>>();
 		boolean once = true;
 		for (int i = 0; i < siteUrls.length; i++) {
@@ -1058,7 +1080,7 @@ public class QuestionPanel extends JPanel {
 				final String siteStr = cb.getText();
 				final boolean mergeVal = merge.isSelected();
 				SwingWorker<Void, Void> worker = createWorker(page, tgs, sorts,
-						siteStr, mergeVal, lbl);
+						siteStr, mergeVal, lbl, ps);
 				workers.add(worker);
 				retrieveWip.incrementAndGet();
 			}
@@ -1069,7 +1091,7 @@ public class QuestionPanel extends JPanel {
 	}
 	protected SwingWorker<Void, Void> createWorker(final int page,
 			final String tgs, final String sorts, final String siteStr,
-			final boolean mergeVal, final JLabel statusLabel) {
+			final boolean mergeVal, final JLabel statusLabel, final int ps) {
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 			List<SummaryEntry> summary = Collections.emptyList();
 			@Override
@@ -1080,16 +1102,16 @@ public class QuestionPanel extends JPanel {
 					if (sorts.endsWith("-U")) {
 						if (tgs.length() > 0) {
 							String tgs1 = tgs.replaceAll("\\s", "+");
-							data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, page);
+							data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, page, ps);
 						} else {
-							data = SOPageParsers.getUnansweredData(siteStr, null, s1, page);
+							data = SOPageParsers.getUnansweredData(siteStr, null, s1, page, ps);
 						}
 					} else {
 						if (tgs.length() > 0) {
 							String tgs1 = tgs.replaceAll("\\s", "+");
-							data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, page);
+							data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, page, ps);
 						} else {
-							data = SOPageParsers.getQuestionsData(siteStr, null, s1, page);
+							data = SOPageParsers.getQuestionsData(siteStr, null, s1, page, ps);
 						}
 					}
 					;

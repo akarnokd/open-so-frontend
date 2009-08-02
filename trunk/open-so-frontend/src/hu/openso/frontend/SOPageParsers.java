@@ -75,7 +75,7 @@ public class SOPageParsers {
 		return list;
 	}
 	static byte[] getQuestionsData(String site, String tags, String sort
-			, int page) throws IOException, HttpException,
+			, int page, int ps) throws IOException, HttpException,
 			FileNotFoundException {
 		HttpClient client = new HttpClient();
 		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
@@ -89,9 +89,9 @@ public class SOPageParsers {
 		}		
 		HttpMethod method = null;
 		if (tags != null) {
-			method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=" + page + "&sort=" + sort + "&pagesize=50");
+			method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=" + page + "&sort=" + sort + "&pagesize=" + ps);
 		} else {
-			method = new GetMethod(site + "/questions?page=" + page + "&sort=" + sort + "&pagesize=50");
+			method = new GetMethod(site + "/questions?page=" + page + "&sort=" + sort + "&pagesize=" + ps);
 		}
 		client.executeMethod(method);
 		
@@ -100,7 +100,7 @@ public class SOPageParsers {
 		return data;
 	}
 	public static byte[] getUnansweredData(String site, String tags, String sort
-			, int page) throws IOException, HttpException,
+			, int page, int ps) throws IOException, HttpException,
 			FileNotFoundException {
 		HttpClient client = new HttpClient();
 		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
@@ -114,9 +114,9 @@ public class SOPageParsers {
 		}		
 		HttpMethod method = null;
 		if (tags != null) {
-			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + tags + "&page=" + page + "&tab=" + sort + "&pagesize=50");
+			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + tags + "&page=" + page + "&tab=" + sort + "&pagesize=" + ps);
 		} else {
-			method = new GetMethod(site + "/unanswered?page=" + page + "&tab=" + sort + "&pagesize=50");
+			method = new GetMethod(site + "/unanswered?page=" + page + "&tab=" + sort + "&pagesize=" + ps);
 		}
 		client.executeMethod(method);
 		

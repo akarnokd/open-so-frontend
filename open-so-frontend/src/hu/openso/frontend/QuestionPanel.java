@@ -31,12 +31,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -115,17 +114,14 @@ public class QuestionPanel extends JPanel {
 	/** Label for background task running. */
 	JLabel wikiBackgroundTask;
 	JButton markAsRead;
-	Map<String, ImageIcon> avatars;
-	Map<String, ImageIcon> avatarsLoading;
-	Map<String, ImageIcon> siteIcons;
-	ExecutorService exec;
 	boolean readCheck = true;
-	/** Set of site name + question id to ignore to the title. */
-	Map<String, String> ignores = new LinkedHashMap<String, String>();
-	Map<String, String> globalIgnores;
 	IgnoreListGUI ignoreListGUI;
-	final IgnoreListGUI globalIgnoreListGUI;
+	/** Set of site name + question id to ignore to the title. */
+	
 	private TitleWithClose tabTitle;
+	/** The question context object. */
+	private final QuestionContext qcontext;
+	Map<String, String> ignores = new HashMap<String, String>();
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -162,11 +158,12 @@ public class QuestionPanel extends JPanel {
 		public Object getValueAt(final int rowIndex, final int columnIndex) {
 			SummaryEntry se = questions.get(rowIndex);
 			switch (columnIndex) {
-			case 0: return siteIcons.get(se.site);
+			case 0: return qcontext.siteIcons.get(se.site);
 			case 1: return se.accepted ? okay : (se.deleted ? error : null);
 			case 2:
 				Boolean isWiki = se.wiki;
-				return isWiki != null ? (isWiki.booleanValue() ? wiki : null) : unknown;
+				return isWiki != null ? (isWiki.booleanValue() ? wiki : null) : 
+					(qcontext.knownWikis.containsKey(se.site + "/" + se.id) ? wiki : unknown);
 			case 3: 
 				int b = se.bounty;
 				if (b > 0) {
@@ -182,9 +179,9 @@ public class QuestionPanel extends JPanel {
 			case 9:
 				final String url = se.avatarUrl;
 				if (url != null) {
-					ImageIcon icon = avatars.get(url);
+					ImageIcon icon = qcontext.avatars.get(url);
 					if (icon == null) {
-						if (!avatarsLoading.containsKey(url)) {
+						if (!qcontext.avatarsLoading.containsKey(url)) {
 							loadImageFor(rowIndex, columnIndex, url);
 						}
 					}
@@ -222,14 +219,14 @@ public class QuestionPanel extends JPanel {
 		}
 		private void loadImageFor(final int rowIndex, final int columnIndex,
 				final String url) {
-			exec.submit(new Runnable() {
+			qcontext.exec.submit(new Runnable() {
 				@Override
 				public void run() {
 					try {
 //						System.out.printf("Getting avatar (%d): %s%n", rowIndex, url);
 						ImageIcon icon = new ImageIcon(ImageIO.read(new URL(url)));
-						avatars.put(url, icon);
-						avatarsLoading.remove(url);
+						qcontext.avatars.put(url, icon);
+						qcontext.avatarsLoading.remove(url);
 						doRefreshTable(rowIndex, columnIndex);
 					} catch (IOException ex) {
 						ex.printStackTrace();
@@ -338,17 +335,8 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 	}
-	public QuestionPanel(Map<String, ImageIcon> avatars, 
-				Map<String, ImageIcon> avatarsLoading, 
-				Map<String, ImageIcon> siteIcons,
-				ExecutorService exec, Map<String, String> globalIgnores, 
-				IgnoreListGUI globalIgnoreListGUI) {
-		this.avatars = avatars;
-		this.avatarsLoading = avatarsLoading;
-		this.siteIcons = siteIcons;
-		this.exec = exec;
-		this.globalIgnores = globalIgnores;
-		this.globalIgnoreListGUI = globalIgnoreListGUI;
+	public QuestionPanel(QuestionContext qcontext) {
+		this.qcontext = qcontext;
 		init();
 		
 	}
@@ -359,10 +347,10 @@ public class QuestionPanel extends JPanel {
 		error = new ImageIcon(getClass().getResource("res/error.png"));
 		wiki = new ImageIcon(getClass().getResource("res/wiki.png"));
 		
-		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
-		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
-		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
-		siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
+		qcontext.siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
+		qcontext.siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
+		qcontext.siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
+		qcontext.siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
 		
 		GroupLayout gl = new GroupLayout(this);
 		setLayout(gl);
@@ -430,10 +418,10 @@ public class QuestionPanel extends JPanel {
 			new JCheckBox("http://superuser.com", false),
 		};
 		siteIconLabels  = new JLabel[] {
-			new JLabel(siteIcons.get("stackoverflow.com")),	
-			new JLabel(siteIcons.get("meta.stackoverflow.com")),	
-			new JLabel(siteIcons.get("serverfault.com")),	
-			new JLabel(siteIcons.get("superuser.com")),	
+			new JLabel(qcontext.siteIcons.get("stackoverflow.com")),	
+			new JLabel(qcontext.siteIcons.get("meta.stackoverflow.com")),	
+			new JLabel(qcontext.siteIcons.get("serverfault.com")),	
+			new JLabel(qcontext.siteIcons.get("superuser.com")),	
 		};
 		tags = new JTextField[] {
 			new JTextField(15),
@@ -761,7 +749,7 @@ public class QuestionPanel extends JPanel {
 	 * @param id
 	 */
 	private void loadQuestionInBackground(final String site, final String id) {
-		exec.submit(new Runnable() {
+		qcontext.exec.submit(new Runnable() {
 			@Override
 			public void run() {
 				try {
@@ -841,7 +829,12 @@ public class QuestionPanel extends JPanel {
 				for (SummaryEntry se : model.questions) {
 					if (se.site.equals(qe.site) && se.id.equals(id)) {
 						se.wiki = qe.wiki;
-						se.deleted = isDeleted; 
+						se.deleted = isDeleted;
+						if (qe.wiki) {
+							qcontext.knownWikis.put(qe.site + "/" + id, "");
+						} else {
+							qcontext.knownWikis.remove(qe.site + "/" + id);
+						}
 					}
 				}
 				model.fireTableDataChanged();
@@ -877,8 +870,8 @@ public class QuestionPanel extends JPanel {
 	 * 
 	 */
 	protected void doShowGlobalIgnores() {
-		globalIgnoreListGUI.remapIgnores();
-		globalIgnoreListGUI.setVisible(true);
+		qcontext.globalIgnoreListGUI.remapIgnores();
+		qcontext.globalIgnoreListGUI.setVisible(true);
 	}
 	/**
 	 * 
@@ -908,10 +901,10 @@ public class QuestionPanel extends JPanel {
 		if (table.getSelectedRow() >= 0) {
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			SummaryEntry se = model.questions.get(idx);
-			globalIgnores.put(se.site + "/" + se.id, se.title);
+			qcontext.globalIgnores.put(se.site + "/" + se.id, se.title);
 			model.questions.remove(idx);
 			model.fireTableRowsDeleted(idx, idx);
-			globalIgnoreListGUI.remapIgnores();
+			qcontext.globalIgnoreListGUI.remapIgnores();
 		}		
 	}
 	/**
@@ -1262,7 +1255,7 @@ public class QuestionPanel extends JPanel {
 				if (ignores.containsKey(e.site + "/" + e.id)) {
 					continue;
 				}
-				if (globalIgnores.containsKey(e.site + "/" + e.id)) {
+				if (qcontext.globalIgnores.containsKey(e.site + "/" + e.id)) {
 					continue;
 				}
 				int i = 0;

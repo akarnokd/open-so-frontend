@@ -1,6 +1,13 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.61 ==
+2009-08-02 11:13Z UTC
+
+  * Added a hack to display question list from beta superuser.com
+  * Remember which question was detected as wiki
+  * Added some panels for future displays
+
 == Version 0.6 ==
 2009-08-01 22:19Z UTC
 

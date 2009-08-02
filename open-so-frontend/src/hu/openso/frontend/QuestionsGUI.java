@@ -27,7 +27,7 @@ import javax.swing.event.ChangeListener;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.6";
+	static final String version = "0.61";
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
@@ -36,9 +36,20 @@ public class QuestionsGUI extends JFrame {
 	/** The global ignore table for site/id. */
 	Map<String, String> globalIgnores = new LinkedHashMap<String, String>();
 	JTabbedPane tabs;
-	JPanel EMPTY_PANEL = new JPanel();
+	/** The main views of the application. */
+	JTabbedPane views;
+	/** Main tab for individual questions/answers. */
+	JTabbedPane answers;
+	/** Main tab for users. */
+	JTabbedPane users;
+	/** A completely empty panel. */
+	JPanel EMPTY_PANEL_Q = new JPanel();
+	JPanel EMPTY_PANEL_A = new JPanel();
+	JPanel EMPTY_PANEL_U = new JPanel();
 	boolean disableTabChange;
 	IgnoreListGUI globalIgnoreListGUI;
+	protected boolean disableAnswersChange;
+	protected boolean disableUsersChange;
 	public QuestionsGUI() {
 		super("Open Stack Overflow Frontend v" + version + " - Questions");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -55,26 +66,73 @@ public class QuestionsGUI extends JFrame {
 		}
 		globalIgnoreListGUI = new IgnoreListGUI(globalIgnores);
 		globalIgnoreListGUI.setTitle("Global Ignore List");
-		tabs = new JTabbedPane();
-		getContentPane().setLayout(new BorderLayout());
-		getContentPane().add(tabs, BorderLayout.CENTER);
 		
-		QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
-		tabs.insertTab("Questions " + (tabs.getTabCount() + 1), null, p, null, tabs.getTabCount());
-		TitleWithClose component = new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p);
-		p.setTabTitle(component);
+		views = new JTabbedPane();
 		
-		tabs.setTabComponentAt(0, component);
-		
-		tabs.addTab("+", null, EMPTY_PANEL, "Open new tab");
-		tabs.addChangeListener(new ChangeListener() {
-			@Override
-			public void stateChanged(ChangeEvent e) {
-				if (!disableTabChange) {
-					doTabClicked();
+		{
+			tabs = new JTabbedPane();
+			QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
+			tabs.insertTab("Questions " + (tabs.getTabCount() + 1), null, p, null, tabs.getTabCount());
+			TitleWithClose component = new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p);
+			p.setTabTitle(component);
+			
+			tabs.setTabComponentAt(0, component);
+			
+			tabs.addTab("+", null, EMPTY_PANEL_Q, "Open new tab");
+			tabs.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) {
+					if (!disableTabChange) {
+						doTabClicked();
+					}
 				}
-			}
-		});
+			});
+		}
+		{
+			answers = new JTabbedPane();
+			JPanel apanel = new JPanel(); // TODO replace with concrete panel
+			answers.insertTab("Q&A " + (answers.getTabCount() + 1), null, apanel, null, answers.getTabCount());
+			TitleWithClose atitle = new TitleWithClose("Q&A " + (answers.getTabCount()), answers, apanel);
+			
+			answers.setTabComponentAt(0, atitle);
+			
+			answers.addTab("+", null, EMPTY_PANEL_A, "Open new tab");
+			answers.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) {
+					if (!disableAnswersChange) {
+						doAnswersClicked();
+					}
+				}
+			});
+		}
+		
+		users = new JTabbedPane();
+		{
+			users = new JTabbedPane();
+			JPanel upanel = new JPanel(); // TODO replace with concrete panel
+			users.insertTab("User " + (users.getTabCount() + 1), null, upanel, null, users.getTabCount());
+			TitleWithClose atitle = new TitleWithClose("User " + (users.getTabCount()), users, upanel);
+			
+			users.setTabComponentAt(0, atitle);
+			
+			users.addTab("+", null, EMPTY_PANEL_U, "Open new tab");
+			users.addChangeListener(new ChangeListener() {
+				@Override
+				public void stateChanged(ChangeEvent e) {
+					if (!disableUsersChange) {
+						doUsersClicked();
+					}
+				}
+			});
+		}
+		
+		views.addTab("Question Listings", tabs);
+		views.addTab("Q&As", answers);
+		views.addTab("Users", users);
+		
+		getContentPane().setLayout(new BorderLayout());
+		getContentPane().add(views, BorderLayout.CENTER);
 		
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
@@ -86,8 +144,38 @@ public class QuestionsGUI extends JFrame {
 			}
 		});
 	}
+	/**
+	 * 
+	 */
+	protected void doUsersClicked() {
+		if (users.getSelectedComponent() == EMPTY_PANEL_U) {
+			disableUsersChange = true;
+			JPanel component = new JPanel();
+			users.insertTab("", null, component, null, users.getTabCount() - 1);
+			TitleWithClose tabComponent = new TitleWithClose("Users " + (users.getTabCount() - 1), users, component);
+			
+			users.setTabComponentAt(users.getTabCount() - 2, tabComponent);
+			disableUsersChange = false;
+			users.setSelectedIndex(users.getTabCount() - 2);
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doAnswersClicked() {
+		if (answers.getSelectedComponent() == EMPTY_PANEL_A) {
+			disableAnswersChange = true;
+			JPanel component = new JPanel();
+			answers.insertTab("", null, component, null, answers.getTabCount() - 1);
+			TitleWithClose tabComponent = new TitleWithClose("Q&A " + (answers.getTabCount() - 1), answers, component);
+
+			answers.setTabComponentAt(answers.getTabCount() - 2, tabComponent);
+			disableAnswersChange = false;
+			answers.setSelectedIndex(answers.getTabCount() - 2);
+		}
+	}
 	protected void doTabClicked() {
-		if (tabs.getSelectedComponent() == EMPTY_PANEL) {
+		if (tabs.getSelectedComponent() == EMPTY_PANEL_Q) {
 			disableTabChange = true;
 			QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
 			tabs.insertTab("", null, component, null, tabs.getTabCount() - 1);
@@ -150,6 +238,46 @@ public class QuestionsGUI extends JFrame {
 						tabs.setSelectedIndex(0);
 					}
 				}
+				String apc = p.getProperty("AnswerPanelCount");
+				if (apc != null) {
+					int panels = Integer.parseInt(apc);
+					if (panels > 0) {
+						disableAnswersChange = true;
+						answers.removeTabAt(0); // remove default tab
+						for (int i = 0; i < panels; i++) {
+							JPanel component = new JPanel();
+							answers.insertTab("", null, component, null, i);
+							String title = p.getProperty("A" + i + "-Title");
+							if (title == null) {
+								title = "Q&A " + (i + 1);
+							}
+							TitleWithClose tabTitle = new TitleWithClose(title, answers, component);
+							answers.setTabComponentAt(i, tabTitle);
+						}
+						disableAnswersChange = false;
+						answers.setSelectedIndex(0);
+					}
+				}
+				String upc = p.getProperty("UserPanelCount");
+				if (upc != null) {
+					int panels = Integer.parseInt(upc);
+					if (panels > 0) {
+						disableUsersChange = true;
+						users.removeTabAt(0); // remove default tab
+						for (int i = 0; i < panels; i++) {
+							JPanel component = new JPanel();
+							users.insertTab("", null, component, null, i);
+							String title = p.getProperty("U" + i + "-Title");
+							if (title == null) {
+								title = "User " + (i + 1);
+							}
+							TitleWithClose tabTitle = new TitleWithClose(title, users, component);
+							users.setTabComponentAt(i, tabTitle);
+						}
+						disableUsersChange = false;
+						users.setSelectedIndex(0);
+					}
+				}
 				String ignoreCnt = p.getProperty("IgnoreCount");
 				if (ignoreCnt != null) {
 					int ic = Integer.parseInt(ignoreCnt);
@@ -182,6 +310,22 @@ public class QuestionsGUI extends JFrame {
 					TitleWithClose tc = (TitleWithClose)tabs.getTabComponentAt(i);
 					p.setProperty("P" + i + "-Title", tc.getTitle());
 					component.donePanel(i, p);
+				}
+			}
+			p.setProperty("AnswerPanelCount", Integer.toString(answers.getTabCount() - 1));
+			for (int i = 0; i < answers.getTabCount(); i++) {
+				Component c = answers.getComponentAt(i);
+				if (c != EMPTY_PANEL_A) {
+					TitleWithClose tc = (TitleWithClose)answers.getTabComponentAt(i);
+					p.setProperty("A" + i + "-Title", tc.getTitle());
+				}
+			}
+			p.setProperty("UserPanelCount", Integer.toString(users.getTabCount() - 1));
+			for (int i = 0; i < users.getTabCount(); i++) {
+				Component c = users.getComponentAt(i);
+				if (c != EMPTY_PANEL_U) {
+					TitleWithClose tc = (TitleWithClose)users.getTabComponentAt(i);
+					p.setProperty("U" + i + "-Title", tc.getTitle());
 				}
 			}
 			p.setProperty("IgnoreCount", Integer.toString(globalIgnores.size()));

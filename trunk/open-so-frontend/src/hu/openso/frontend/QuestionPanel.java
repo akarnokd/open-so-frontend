@@ -453,7 +453,7 @@ public class QuestionPanel extends JPanel {
 		siteIconLabels[2].setToolTipText("Open Server Fault in browser");
 		siteIconLabels[3].setToolTipText("Open Super User in browser");
 		for (int i = 0; i < status.length; i++) {
-			final int j = 0;
+			final int j = i;
 			siteIconLabels[i].addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent e) {

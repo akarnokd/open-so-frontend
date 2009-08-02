@@ -32,6 +32,8 @@ public class QuestionsGUI extends JFrame {
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
+	// set of known wikis
+	Map<String, String> knownWikis = new ConcurrentHashMap<String, String>();
 	ExecutorService exec = Executors.newFixedThreadPool(5);
 	/** The global ignore table for site/id. */
 	Map<String, String> globalIgnores = new LinkedHashMap<String, String>();
@@ -71,7 +73,8 @@ public class QuestionsGUI extends JFrame {
 		
 		{
 			tabs = new JTabbedPane();
-			QuestionPanel p = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
+			QuestionContext qc = createQuestionContext();
+			QuestionPanel p = new QuestionPanel(qc);
 			tabs.insertTab("Questions " + (tabs.getTabCount() + 1), null, p, null, tabs.getTabCount());
 			TitleWithClose component = new TitleWithClose("Questions " + (tabs.getTabCount()), tabs, p);
 			p.setTabTitle(component);
@@ -177,7 +180,9 @@ public class QuestionsGUI extends JFrame {
 	protected void doTabClicked() {
 		if (tabs.getSelectedComponent() == EMPTY_PANEL_Q) {
 			disableTabChange = true;
-			QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
+			QuestionContext qc = createQuestionContext();
+
+			QuestionPanel component = new QuestionPanel(qc);
 			tabs.insertTab("", null, component, null, tabs.getTabCount() - 1);
 			TitleWithClose tabComponent = new TitleWithClose("Questions " + (tabs.getTabCount() - 1), tabs, component);
 			component.setTabTitle(tabComponent);
@@ -223,7 +228,9 @@ public class QuestionsGUI extends JFrame {
 						disableTabChange = true;
 						tabs.removeTabAt(0); // remove default tab
 						for (int i = 0; i < panels; i++) {
-							QuestionPanel component = new QuestionPanel(avatars, avatarsLoading, siteIcons, exec, globalIgnores, globalIgnoreListGUI);
+							QuestionContext qc = createQuestionContext();
+
+							QuestionPanel component = new QuestionPanel(qc);
 							tabs.insertTab("", null, component, null, i);
 							String title = p.getProperty("P" + i + "-Title");
 							if (title == null) {
@@ -285,12 +292,34 @@ public class QuestionsGUI extends JFrame {
 						globalIgnores.put(p.getProperty("Ignore" + i), p.getProperty("IgnoreTitle" + i));
 					}
 				}
+				String wikiCnt = p.getProperty("KnownWikisCount");
+				if (wikiCnt != null) {
+					int ic = Integer.parseInt(wikiCnt);
+					for (int i = 0; i < ic; i++) {
+						globalIgnores.put(p.getProperty("KnownWikis" + i), "");
+					}
+				}
 			} finally {
 				in.close();
 			}
 		} catch (IOException ex) {
 			// ignore
 		}
+	}
+	/**
+	 * @return
+	 */
+	private QuestionContext createQuestionContext() {
+		QuestionContext qc = new QuestionContext()
+		.setAvatars(avatars)
+		.setAvatarsLoading(avatarsLoading)
+		.setSiteIcons(siteIcons)
+		.setExec(exec)
+		.setGlobalIgnores(globalIgnores)
+		.setGlobalIgnoreListGUI(globalIgnoreListGUI)
+		.setKnownWikis(knownWikis);
+		;
+		return qc;
 	}
 	/** Save the window state to configuration file. */
 	private void doneConfig() {
@@ -333,6 +362,11 @@ public class QuestionsGUI extends JFrame {
 			for (Map.Entry<String, String> e: globalIgnores.entrySet()) {
 				p.setProperty("Ignore" + i, e.getKey());
 				p.setProperty("IgnoreTitle" + i, e.getValue());
+				i++;
+			}
+			p.setProperty("KnownWikisCount", Integer.toString(knownWikis.size()));
+			for (Map.Entry<String, String> e: knownWikis.entrySet()) {
+				p.setProperty("KnownWikis" + i, e.getKey());
 				i++;
 			}
 			

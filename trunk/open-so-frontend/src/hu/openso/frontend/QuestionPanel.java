@@ -127,6 +127,8 @@ public class QuestionPanel extends JPanel {
 	Map<String, String> ignores = new HashMap<String, String>();
 	@SaveValue
 	private JTextField findValue;
+	private SwingWorker<Void, Void> wikiSwingWorker;
+	private JPopupMenu wikiTestMenu;
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -467,6 +469,16 @@ public class QuestionPanel extends JPanel {
 		}
 		
 		wikiBackgroundTask = new JLabel();
+		wikiBackgroundTask.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				doWikiBackgroundPopup(e);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				doWikiBackgroundPopup(e);
+			}
+		});
 		
 		page = new JFormattedTextField(1);
 		page.setColumns(2);
@@ -689,6 +701,14 @@ public class QuestionPanel extends JPanel {
 		createMenu();
 	}
 	/**
+	 * @param e
+	 */
+	protected void doWikiBackgroundPopup(MouseEvent e) {
+		if (e.isPopupTrigger()) {
+			wikiTestMenu.show(e.getComponent(), e.getX(), e.getY());
+		}
+	}
+	/**
 	 * Test the summary entry for the list of keywords
 	 * @param se
 	 * @param text
@@ -865,6 +885,13 @@ public class QuestionPanel extends JPanel {
 				doAutowith();
 			}
 		});
+		JMenuItem wikiUntesed = new JMenuItem("Test (?) only for Wiki/Deleted");
+		wikiUntesed.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doUnknownWikiDelTest();
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
@@ -872,6 +899,7 @@ public class QuestionPanel extends JPanel {
 		menu.add(unread);
 		menu.addSeparator();
 		menu.add(wikiDelTest);
+		menu.add(wikiUntesed);
 		menu.add(wikiDelTestAll);
 		menu.addSeparator();
 		menu.add(removeFromList);
@@ -883,6 +911,93 @@ public class QuestionPanel extends JPanel {
 		menu.add(showLocalIgnores);
 		menu.add(showGlobalIgnores);
 		menu.add(autowith);
+		
+		wikiTestMenu = new JPopupMenu();
+		JMenuItem cancelWiki = new JMenuItem("Cancel Wiki/Deleted test");
+		cancelWiki.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doCancelWiki();
+			}
+		});
+		
+		wikiTestMenu.add(cancelWiki);
+	}
+	/**
+	 * Cancel running background wiki process
+	 */
+	protected void doCancelWiki() {
+		if (wikiSwingWorker != null) {
+			wikiSwingWorker.cancel(true);
+			wikiSwingWorker = null;
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doUnknownWikiDelTest() {
+		// once
+		if (wikiBackgroundTask.getIcon() != null) {
+			return;
+		}
+		final List<String> sites = new ArrayList<String>();
+		final List<String> ids = new ArrayList<String>();
+		for (SummaryEntry se : model.questions) {
+			if (se.wiki == null && !se.deleted) {
+				sites.add(se.site);
+				ids.add(se.id);
+			}
+		}
+		doProcessWikiBackground(sites, ids);
+		
+	}
+	/** Retrieve wiki status for all listed entries. */
+	protected void doWikiDelTestAll() {
+		// once
+		if (wikiBackgroundTask.getIcon() != null) {
+			return;
+		}
+		final List<String> sites = new ArrayList<String>();
+		final List<String> ids = new ArrayList<String>();
+		for (SummaryEntry se : model.questions) {
+			sites.add(se.site);
+			ids.add(se.id);
+		}
+		doProcessWikiBackground(sites, ids);
+	}
+	/**
+	 * @param sites
+	 * @param ids
+	 */
+	private void doProcessWikiBackground(final List<String> sites,
+			final List<String> ids) {
+		wikiBackgroundTask.setIcon(rolling);
+		wikiBackgroundTask.setToolTipText("Analyzing all questions");
+		wikiSwingWorker = new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() throws Exception {
+				for (int i = 0; i < sites.size(); i++) {
+					if (isCancelled()) {
+						break;
+					}
+					if (i > 0) {
+						TimeUnit.MILLISECONDS.sleep(250); // sleep to avoid overwhelming the site
+					}
+					byte[] data = SOPageParsers.getAQuestionData("http://" + sites.get(i), ids.get(i));
+					QuestionEntry qe = SOPageParsers.processQuestionPage(data);
+					qe.site = sites.get(i);
+					doUpdateListForWiki(qe, ids.get(i), i + 1, sites.size());
+				}
+				return null;
+			}
+			@Override
+			protected void done() {
+				wikiBackgroundTask.setIcon(null);
+				wikiBackgroundTask.setText("");
+				wikiBackgroundTask.setToolTipText(null);
+			}
+		};
+		wikiSwingWorker.execute();
 	}
 	/**
 	 * 
@@ -922,45 +1037,6 @@ public class QuestionPanel extends JPanel {
 				}
 			}
 		});
-	}
-	/** Retrieve wiki status for all listed entries. */
-	protected void doWikiDelTestAll() {
-		// once
-		if (wikiBackgroundTask.getIcon() != null) {
-			return;
-		}
-		final String[] sites = new String[model.questions.size()];
-		final String[] ids = new String [sites.length];
-		int i = 0;
-		for (SummaryEntry se : model.questions) {
-			sites[i] = se.site;
-			ids[i] = se.id;
-			i++;
-		}
-		wikiBackgroundTask.setIcon(rolling);
-		wikiBackgroundTask.setToolTipText("Analyzing all questions");
-		SwingWorker<Void, Void> sw = new SwingWorker<Void, Void>() {
-			@Override
-			protected Void doInBackground() throws Exception {
-				for (int i = 0; i < sites.length; i++) {
-					if (i > 0) {
-						TimeUnit.MILLISECONDS.sleep(250); // sleep to avoid overwhelming the site
-					}
-					byte[] data = SOPageParsers.getAQuestionData("http://" + sites[i], ids[i]);
-					QuestionEntry qe = SOPageParsers.processQuestionPage(data);
-					qe.site = sites[i];
-					doUpdateListForWiki(qe, ids[i], i + 1, sites.length);
-				}
-				return null;
-			}
-			@Override
-			protected void done() {
-				wikiBackgroundTask.setIcon(null);
-				wikiBackgroundTask.setText("");
-				wikiBackgroundTask.setToolTipText(null);
-			}
-		};
-		sw.execute();
 	}
 	/**
 	 * @param qe the question entry object, non null

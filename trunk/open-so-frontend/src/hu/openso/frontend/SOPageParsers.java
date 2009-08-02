@@ -36,7 +36,13 @@ public class SOPageParsers {
 	 * @throws ParserException if a HTML parsing problem occurs
 	 */
 	public static List<SummaryEntry> processMainPage(byte[] data) throws ParserException {
-		Parser html = new Parser(new String(data, UTF_8));
+		List<SummaryEntry> list = new ArrayList<SummaryEntry>();
+		String htmlStr = new String(data, UTF_8);
+		// check for offline indicator
+		if (htmlStr.contains("<title>Offline - ")) {
+			return list; 
+		}
+		Parser html = new Parser(htmlStr);
 		// filter question summaries
 		NodeList lst = html.parse(new NodeFilter() {
 			private static final long serialVersionUID = -4798449277408336566L;
@@ -55,7 +61,6 @@ public class SOPageParsers {
 			}
 		});
 		SimpleNodeIterator nit = lst.elements();
-		List<SummaryEntry> list = new ArrayList<SummaryEntry>();
 		while (nit.hasMoreNodes()) {
 			Node n = nit.nextNode();
 			if (n instanceof Tag) {
@@ -452,7 +457,12 @@ public class SOPageParsers {
 	 */
 	public static QuestionEntry processQuestionPage(byte[] data) throws ParserException {
 		final QuestionEntry qe = new QuestionEntry();
-		Parser html = new Parser(new String(data, UTF_8));
+		String htmlStr = new String(data, UTF_8);
+		// check for offline indicator
+		if (htmlStr.contains("<title>Offline - ")) {
+			return qe; 
+		}
+		Parser html = new Parser(htmlStr);
 		// filter question summaries
 		NodeList lst = html.parse(new NodeFilter() {
 			private static final long serialVersionUID = -4798449277408336566L;

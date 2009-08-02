@@ -162,8 +162,15 @@ public class QuestionPanel extends JPanel {
 			case 1: return se.accepted ? okay : (se.deleted ? error : null);
 			case 2:
 				Boolean isWiki = se.wiki;
-				return isWiki != null ? (isWiki.booleanValue() ? wiki : null) : 
-					(qcontext.knownWikis.containsKey(se.site + "/" + se.id) ? wiki : unknown);
+				Boolean isKnown = qcontext.knownWikis.get(se.site + "/" + se.id);
+				if ((isWiki != null && isWiki.booleanValue()) 
+						|| (isKnown != null && isKnown.booleanValue())) {
+					return wiki;
+				} else
+				if (isWiki == null && isKnown == null) {
+					return unknown;
+				}
+				return null;
 			case 3: 
 				int b = se.bounty;
 				if (b > 0) {
@@ -830,11 +837,7 @@ public class QuestionPanel extends JPanel {
 					if (se.site.equals(qe.site) && se.id.equals(id)) {
 						se.wiki = qe.wiki;
 						se.deleted = isDeleted;
-						if (qe.wiki) {
-							qcontext.knownWikis.put(qe.site + "/" + id, "");
-						} else {
-							qcontext.knownWikis.remove(qe.site + "/" + id);
-						}
+						qcontext.knownWikis.put(qe.site + "/" + id, qe.wiki);
 					}
 				}
 				model.fireTableDataChanged();

@@ -33,7 +33,7 @@ public class QuestionsGUI extends JFrame {
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
 	// set of known wikis
-	Map<String, String> knownWikis = new ConcurrentHashMap<String, String>();
+	Map<String, Boolean> knownWikis = new ConcurrentHashMap<String, Boolean>();
 	ExecutorService exec = Executors.newFixedThreadPool(5);
 	/** The global ignore table for site/id. */
 	Map<String, String> globalIgnores = new LinkedHashMap<String, String>();
@@ -296,7 +296,8 @@ public class QuestionsGUI extends JFrame {
 				if (wikiCnt != null) {
 					int ic = Integer.parseInt(wikiCnt);
 					for (int i = 0; i < ic; i++) {
-						globalIgnores.put(p.getProperty("KnownWikis" + i), "");
+						String kwv = p.getProperty("KnownWikisValue" + i);
+						knownWikis.put(p.getProperty("KnownWikis" + i), kwv != null ? Boolean.parseBoolean(kwv) : true);
 					}
 				}
 			} finally {
@@ -365,8 +366,9 @@ public class QuestionsGUI extends JFrame {
 				i++;
 			}
 			p.setProperty("KnownWikisCount", Integer.toString(knownWikis.size()));
-			for (Map.Entry<String, String> e: knownWikis.entrySet()) {
+			for (Map.Entry<String, Boolean> e: knownWikis.entrySet()) {
 				p.setProperty("KnownWikis" + i, e.getKey());
+				p.setProperty("KnownWikisValue" + i, Boolean.toString(e.getValue()));
 				i++;
 			}
 			

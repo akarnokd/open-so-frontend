@@ -14,3 +14,4 @@ Please add your feature requests as comments below. I'll try to not say *status-
 || 2009-08-01 22:20 || _Me:_ Display if a question is community wiki || Completed-0.6 (2009-08-01 22:20) ||
 || 2009-08-02 09:33 || _Me:_ Remember which questions was seen as Wiki between sessions || Completed-0.61 (2009-08-02 11:13 ||
 || 2009-08-02 11:13 || _Me:_ Access to beta superuser.com || Completed-0.61 (2009-08-02 11:13 ||
+|| 2009-08-02 15:00 || _Me:_ Find list entries based on keywords || Completed-SVN (2009-08-02 15:00 ||

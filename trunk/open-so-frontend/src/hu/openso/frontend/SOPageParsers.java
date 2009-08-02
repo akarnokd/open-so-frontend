@@ -13,6 +13,7 @@ import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.htmlparser.Node;
 import org.htmlparser.NodeFilter;
@@ -80,6 +81,12 @@ public class SOPageParsers {
 		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
 	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
 		
+		// TODO if it is superuser, lie us in
+		if (site.contains("superuser.com")) {
+			PostMethod post = new PostMethod(site + "/beta-access");
+			post.setParameter("password", "ewok.adventure");
+			client.executeMethod(post);
+		}		
 		HttpMethod method = null;
 		if (tags != null) {
 			method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=" + page + "&sort=" + sort + "&pagesize=50");
@@ -99,6 +106,12 @@ public class SOPageParsers {
 		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
 	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
 		
+		// TODO if it is superuser, lie us in
+		if (site.contains("superuser.com")) {
+			PostMethod post = new PostMethod(site + "/beta-access");
+			post.setParameter("password", "ewok.adventure");
+			client.executeMethod(post);
+		}		
 		HttpMethod method = null;
 		if (tags != null) {
 			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + tags + "&page=" + page + "&tab=" + sort + "&pagesize=50");
@@ -115,6 +128,12 @@ public class SOPageParsers {
 	public static byte[] getAQuestionData(String site, String id) throws IOException, HttpException,
 	FileNotFoundException {
 		HttpClient client = new HttpClient();
+		// TODO if it is superuser, lie us in
+		if (site.contains("superuser.com")) {
+			PostMethod post = new PostMethod(site + "/beta-access");
+			post.setParameter("password", "ewok.adventure");
+			client.executeMethod(post);
+		}		
 		HttpMethod method = new GetMethod(site + "/questions/" + id);
 		client.executeMethod(method);
 		byte[] data = method.getResponseBody();

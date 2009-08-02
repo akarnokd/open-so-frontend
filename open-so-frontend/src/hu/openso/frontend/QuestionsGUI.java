@@ -32,7 +32,7 @@ import javax.swing.event.ChangeListener;
 
 public class QuestionsGUI extends JFrame {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.61";
+	static final String version = "0.62";
 	
 	Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
 	Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();

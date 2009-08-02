@@ -2,6 +2,7 @@ package hu.openso.frontend;
 
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -124,6 +125,8 @@ public class QuestionPanel extends JPanel {
 	/** The question context object. */
 	private final QuestionContext qcontext;
 	Map<String, String> ignores = new HashMap<String, String>();
+	@SaveValue
+	private JTextField findValue;
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -440,11 +443,29 @@ public class QuestionPanel extends JPanel {
 		};
 		totalLabel = new JLabel("Welcome to Open Stack Overflow Frontend");
 		status = new JLabel[] {
-			new JLabel("Stack Overflow", siteIconLabels[0].getIcon(), JLabel.LEFT), 
-			new JLabel("Meta", siteIconLabels[1].getIcon(), JLabel.LEFT), 
-			new JLabel("Server Fault", siteIconLabels[2].getIcon(), JLabel.LEFT),
-			new JLabel("Super User", siteIconLabels[3].getIcon(), JLabel.LEFT),
+			new JLabel("", siteIconLabels[0].getIcon(), JLabel.LEFT), 
+			new JLabel("", siteIconLabels[1].getIcon(), JLabel.LEFT), 
+			new JLabel("", siteIconLabels[2].getIcon(), JLabel.LEFT),
+			new JLabel("", siteIconLabels[3].getIcon(), JLabel.LEFT),
 		};
+		
+		siteIconLabels[0].setToolTipText("Open Stack Overflow in browser");
+		siteIconLabels[1].setToolTipText("Open Meta Stack Overflow in browser");
+		siteIconLabels[2].setToolTipText("Open Server Fault in browser");
+		siteIconLabels[3].setToolTipText("Open Super User in browser");
+		for (int i = 0; i < status.length; i++) {
+			final int j = 0;
+			siteIconLabels[i].addMouseListener(new MouseAdapter() {
+				@Override
+				public void mouseClicked(MouseEvent e) {
+					if (e.getButton() == MouseEvent.BUTTON1) {
+						doOpenSite(siteUrls[j].getText());
+					}
+				}
+			});
+			siteIconLabels[i].setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		}
+		
 		wikiBackgroundTask = new JLabel();
 		
 		page = new JFormattedTextField(1);
@@ -468,8 +489,7 @@ public class QuestionPanel extends JPanel {
 		clear.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				model.questions.clear();
-				model.fireTableDataChanged();
+				doClearListing();
 			}
 		});
 		
@@ -506,6 +526,29 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 		
+		JLabel findLabel = new JLabel("Find:");
+		
+		ActionListener findNextAction = new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doFindNext();
+			}
+		};
+		findValue = new JTextField(15);
+		findValue.setToolTipText("<html>Find in title, excerpt, tags and user name, <br>space separates keyword fragments, ENTER to find next");
+		findValue.addActionListener(findNextAction);
+		JButton findPrev = new JButton("\u2190");
+		findPrev.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doFindPrevious();
+			}
+		});
+		findPrev.setToolTipText("Find backward");
+		JButton findNext = new JButton("\u2192");
+		findNext.addActionListener(findNextAction);
+		findNext.setToolTipText("Find forward");
+		
 		SequentialGroup sg = gl.createSequentialGroup();
 		for (int i = 0; i < siteUrls.length / 2; i++) {
 			sg.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
@@ -518,12 +561,21 @@ public class QuestionPanel extends JPanel {
 			sg1.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 			sg1.addComponent(tags[i], 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 		}
+		
 		SequentialGroup sg2 = gl.createSequentialGroup();
 		sg2.addComponent(totalLabel);
 		for (int i = 0; i < siteUrls.length; i++) {
 			sg2.addComponent(status[i]);
 		}		
-		sg2.addComponent(wikiBackgroundTask);
+		sg2
+		.addComponent(wikiBackgroundTask)
+		.addGap(1, 10, Short.MAX_VALUE)
+		.addComponent(findLabel)
+		.addComponent(findValue, 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
+		.addComponent(findPrev)
+		.addComponent(findNext)
+		;
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -580,7 +632,13 @@ public class QuestionPanel extends JPanel {
 		for (int i = 0; i < siteUrls.length; i++) {
 			pg2.addComponent(status[i]);
 		}		
-		pg2.addComponent(wikiBackgroundTask);
+		pg2
+		.addComponent(wikiBackgroundTask)
+		.addComponent(findLabel)
+		.addComponent(findValue)
+		.addComponent(findPrev)
+		.addComponent(findNext)
+		;
 		gl.setVerticalGroup(
 			gl.createSequentialGroup()
 			.addGroup(
@@ -626,8 +684,87 @@ public class QuestionPanel extends JPanel {
 			comps.add(tags[i]);
 		}
 		gl.linkSize(SwingConstants.VERTICAL, comps.toArray(new Component[0]));
+		gl.linkSize(SwingConstants.VERTICAL, findValue, findPrev, findNext);
 		
 		createMenu();
+	}
+	/**
+	 * Test the summary entry for the list of keywords
+	 * @param se
+	 * @param text
+	 * @return
+	 */
+	private boolean checkEntryFor(SummaryEntry se, String[] text) {
+		for (int i = 0; i < text.length; i++) {
+			String kw = text[i];
+			boolean any = false;
+			
+			any |= se.title.contains(kw);
+			any |= se.excerpt.contains(kw);
+			any |= se.userName.contains(kw);
+			any |= se.tags.contains(kw);
+			
+			if (!any) {
+				return false;
+			}
+		}
+		return true;
+	}
+	/**
+	 * Find next element starting after the current selection
+	 */
+	protected void doFindNext() {
+		String[] keywords = findValue.getText().split("\\s+");
+		int idx = table.getSelectedRow() + 1;
+		if (idx >= table.getRowCount()) {
+			idx = 0;
+		}
+		for (int i = 0; i < table.getRowCount(); i++) {
+			int i0 = (i + idx) % table.getRowCount();
+			int mdl = table.convertRowIndexToModel(i0);
+			SummaryEntry se = model.questions.get(mdl);
+			if (checkEntryFor(se, keywords)) {
+				table.getSelectionModel().setSelectionInterval(i0, i0);
+				table.scrollRectToVisible(table.getCellRect(i0, 0, true));
+				break;
+			}
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doFindPrevious() {
+		String[] keywords = findValue.getText().split("\\s+");
+		int idx = table.getSelectedRow() - 1;
+		if (idx < 0) {
+			idx = table.getSelectedRow() - 1;
+		}
+		for (int i = table.getRowCount() - 1; i >= 0; i--) {
+			int i0 = (i + idx) % table.getRowCount();
+			int mdl = table.convertRowIndexToModel(i0);
+			SummaryEntry se = model.questions.get(mdl);
+			if (checkEntryFor(se, keywords)) {
+				table.getSelectionModel().setSelectionInterval(i0, i0);
+				table.scrollRectToVisible(table.getCellRect(i0, 0, true));
+				break;
+			}
+		}
+	}
+	/**
+	 * @param component
+	 */
+	protected void doOpenSite(final String site) {
+		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() throws Exception {
+				Desktop d = Desktop.getDesktop();
+				if (d != null) {
+					d.browse(new URI(site));
+				}
+				return null;
+			}
+		};
+		worker.execute();
 	}
 	/**
 	 * 
@@ -1370,5 +1507,13 @@ public class QuestionPanel extends JPanel {
 			}
 			tabTitle.setUnread(value);
 		}
+	}
+	/**
+	 * 
+	 */
+	private void doClearListing() {
+		model.questions.clear();
+		model.fireTableDataChanged();
+		tabTitle.setUnread(0);
 	}
 }

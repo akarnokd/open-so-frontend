@@ -1,6 +1,14 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.62 ==
+2009-08-02 15:47Z UTC
+
+  * Added the ability to search the listings based on keywords
+  * Made the wiki-test cancellable through a popup menu on its progress indicator
+  * Added option for test wikiness on unknown entries only
+  * Minor GUI fixes and added some ability to handle Offline responses from the servers
+
 == Version 0.61 ==
 2009-08-02 11:13Z UTC
 

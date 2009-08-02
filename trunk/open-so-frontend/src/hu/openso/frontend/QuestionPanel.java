@@ -716,6 +716,14 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 		
+		JMenuItem autowith = new JMenuItem("Auto size columns");
+		autowith.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doAutowith();
+			}
+		});
+		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
@@ -732,6 +740,13 @@ public class QuestionPanel extends JPanel {
 		menu.addSeparator();
 		menu.add(showLocalIgnores);
 		menu.add(showGlobalIgnores);
+		menu.add(autowith);
+	}
+	/**
+	 * 
+	 */
+	protected void doAutowith() {
+		GUIUtils.autoResizeColWidth(table, model);
 	}
 	protected void doWikiDelTest() {
 		SummaryEntry se = getSelectedEntry();

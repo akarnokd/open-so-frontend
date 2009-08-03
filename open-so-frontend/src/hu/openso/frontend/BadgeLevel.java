@@ -13,7 +13,12 @@ package hu.openso.frontend;
  * @version $Revision 1.0$
  */
 public enum BadgeLevel {
-	BRONZE,
-	SILVER,
-	GOLD
+	BRONZE(0xCC9966),
+	SILVER(0xC0C0C0),
+	GOLD(0xFFCC00)
+	;
+	public final int color;
+	BadgeLevel(int color) {
+		this.color = color;
+	}
 }

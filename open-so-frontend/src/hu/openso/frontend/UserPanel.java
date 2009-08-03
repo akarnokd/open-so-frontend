@@ -82,6 +82,8 @@ public class UserPanel extends JPanel {
 	protected JLabel avatar;
 	private JPopupMenu avatarMenu;
 	protected final AtomicInteger retrieveWip = new AtomicInteger(0);
+	/** The reputation panel for this user settings. */
+	protected ReputationPanel repPanel;
 	/** Avatar large images cache. */
 	protected static Map<String, ImageIcon> avatarLargeImages = new ConcurrentHashMap<String, ImageIcon>();
 	/**
@@ -154,6 +156,8 @@ public class UserPanel extends JPanel {
 		avatar.setHorizontalAlignment(JLabel.CENTER);
 		avatar.setVerticalAlignment(JLabel.CENTER);
 		
+		repPanel = new ReputationPanel(uctx);
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -172,8 +176,15 @@ public class UserPanel extends JPanel {
 			.addGroup(
 				gl.createSequentialGroup()
 				.addComponent(avatar, 128, 128, 128)
-				.addComponent(userName, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
-				.addComponent(setAsTabTitle)
+				.addGroup(
+					gl.createParallelGroup()
+					.addGroup(
+						gl.createSequentialGroup()
+						.addComponent(userName, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
+						.addComponent(setAsTabTitle)
+					)
+					.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				)
 			)
 		);
 		gl.setVerticalGroup(
@@ -191,8 +202,15 @@ public class UserPanel extends JPanel {
 			.addGroup(
 				gl.createParallelGroup(Alignment.BASELINE)
 				.addComponent(avatar, 128, 128, 128)
-				.addComponent(userName, 30, 30, 30)
-				.addComponent(setAsTabTitle)
+				.addGroup(
+					gl.createSequentialGroup()
+					.addGroup(
+						gl.createParallelGroup()
+						.addComponent(userName, 30, 30, 30)
+						.addComponent(setAsTabTitle)
+					)
+					.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				)
 			)
 		);
 		compsToLink.add(retrieve);
@@ -277,9 +295,10 @@ public class UserPanel extends JPanel {
 			}
 		});
 		
+		
 		avatarMenu.add(copyUrl);
 		avatarMenu.add(copyImage);
-		
+
 	}
 	/**
 	 * Copy the avatar image to the clipboard.
@@ -309,7 +328,7 @@ public class UserPanel extends JPanel {
 	 */
 	protected void doSetAsTabTitle() {
 		if (isValidUser()) {
-			tabTitle.setTitle(up[0].name + "@" + up[0].site);
+			tabTitle.setTitle(up[0].name);
 		}
 	}
 	/**
@@ -396,6 +415,16 @@ public class UserPanel extends JPanel {
 							setRefreshLabel();
 							refreshTimer.start();
 						}
+						List<UserProfile> ups = new ArrayList<UserProfile>();
+						for (int i = 0; i < up.length; i++) {
+							if (up[i] != null && up[i].avatarUrl != null) {
+								ups.add(up[i]);
+							}
+						}
+						repPanel.userProfiles.clear();
+						repPanel.userProfiles.addAll(ups);
+						repPanel.invalidate();
+						repPanel.repaint();
 					}
 				}
 			}).execute();
@@ -420,6 +449,7 @@ public class UserPanel extends JPanel {
 		if (refresh.isSelected()) {
 			refreshTimer.start();
 		}
+		repPanel.initPanel(index, p);
 	}
 	/**
 	 * Saves the panel settings into the properties object
@@ -431,6 +461,7 @@ public class UserPanel extends JPanel {
 		// XXX save settings
 		GUIUtils.saveLoadValues(this, true, p, "U" + index + "-");
 		refreshTimer.stop();
+		repPanel.donePanel(index, p);
 	}
 	/**
 	 * Retrieve user data for the site and id.
@@ -440,7 +471,7 @@ public class UserPanel extends JPanel {
 	public void openUser(String site, String id) {
 		for (int i = 0; i < sites.length; i++) {
 			if (sites[i].equals(site)) {
-				userId[i].setText(site);
+				userId[i].setText(id);
 				doRetrieve();
 			} else {
 				userId[i].setText("");
@@ -470,7 +501,7 @@ public class UserPanel extends JPanel {
 			avatar.setIcon(ic);
 			return;
 		}
-		avatar.setIcon(uctx.go); // progress indication
+		avatar.setIcon(uctx.rolling); // progress indication
 		GUIUtils.getWorker(new WorkItem() {
 			ImageIcon icon;
 			@Override

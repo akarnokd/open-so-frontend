@@ -283,6 +283,9 @@ public class QuestionPanel extends JPanel {
 				} else
 				if (se.site.equals("serverfault.com")) {
 					g2.setColor(new Color(0x10456A));
+				} else
+				if (se.site.equals("superuser.com")) {
+					g2.setColor(new Color(0x1086A4));
 				}
 				int ellw = fm0.stringWidth("\u2026");
 				int titleWidth = fm0.stringWidth(se.title);

@@ -1,5 +1,7 @@
 package hu.openso.frontend;
 
+import hu.openso.frontend.BadgeEntry.BadgeLevel;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -331,6 +333,13 @@ public class SOPageParsers {
 		}
 		return false;
 	}
+	static boolean tagWithAttrEnds(Tag t, String tagname, String attr, String starts) {
+		if (tagname == null || t.getTagName().equalsIgnoreCase(tagname)) {
+			String r = t.getAttribute(attr);
+			return  r != null && r.endsWith(starts);
+		}
+		return false;
+	}
 	static boolean tagWithAttrContains(Tag t, String tagname, String attr, String starts) {
 		if (tagname == null || t.getTagName().equalsIgnoreCase(tagname)) {
 			String r = t.getAttribute(attr);
@@ -604,5 +613,235 @@ public class SOPageParsers {
 			ex.printStackTrace();
 		}
 		return ver;
+	}
+	public static List<ReputationEntry> parseHistoryTable(byte[] data) throws ParserException {
+		final List<ReputationEntry> result = new ArrayList<ReputationEntry>();
+		String htmlStr = new String(data, UTF_8);
+		// check for offline indicator
+		if (htmlStr.contains("<title>Offline - ")) {
+			return result; 
+		}
+		Parser html = new Parser(htmlStr);
+		// filter question summaries
+		NodeList lst = html.parse(new NodeFilter() {
+			private static final long serialVersionUID = -4798449277408336566L;
+			@Override
+			public boolean accept(Node node) {
+				if (node instanceof Tag) {
+					Tag t = (Tag)node;
+					if (tagWithAttrIs(t, "table", "class", "history-table")) {
+						return true;
+					}
+				}
+				return false;
+			}
+		});
+		if (lst.size() > 0) {
+			visitor((Tag)lst.elementAt(0), new Associator() {
+				/** The current reputation entry. */
+				ReputationEntry re;
+				@Override
+				public void associate(Tag t) {
+					if (t.getTagName().equalsIgnoreCase("tr")) {
+						re = new ReputationEntry();
+						result.add(re);
+					}
+					if (re == null) {
+						return;
+					}
+					if (tagWithAttrIs(t, "div", "class", "date")) {
+						String d = getTextOf(t);
+						String v = d.substring(0, d.length() - 1);
+						if (d.endsWith("h")) {
+							re.time = System.currentTimeMillis() - Long.parseLong(v) * 60 * 60 * 1000;
+						} else
+						if (d.endsWith("d")) {
+							re.time = System.currentTimeMillis() - Long.parseLong(v) * 60 * 60 * 1000 * 24;
+						} else
+						if (d.endsWith("m")) {
+							re.time = System.currentTimeMillis() - Long.parseLong(v) * 60 * 1000;
+						}
+						if (d.endsWith("s")) {
+							re.time = System.currentTimeMillis() - Long.parseLong(v) * 1000;
+						}
+//					} else
+//					if (tagWithAttrIs(t, "div", "class", "date_brick")) {
+//						String d = getTextOf(t);
+					}
+				}
+			});
+		}
+		
+		return result;
+	}
+	/**
+	 * Returns the HTML page for the user stats page for the given site.
+	 * @param site the site to query
+	 * @param id the user identifier at that site
+	 * @return the byte array containing the HTML data
+	 * @throws IOException
+	 * @throws HttpException
+	 * @throws FileNotFoundException
+	 */
+	public static byte[] getAUserData(String site, String id) throws IOException, HttpException,
+	FileNotFoundException {
+		HttpClient client = new HttpClient();
+		// TODO if it is superuser, lie us in
+		if (site.contains("superuser.com")) {
+			PostMethod post = new PostMethod(site + "/beta-access");
+			post.setParameter("password", "ewok.adventure");
+			client.executeMethod(post);
+		}		
+		HttpMethod method = new GetMethod(site + "/users/" + id + "?tab=stats");
+		client.executeMethod(method);
+		byte[] data = method.getResponseBody();
+		method.releaseConnection();
+		return data;
+	}
+	/**
+	 * Parses the stats page for the public user profile.
+	 * @param data the data which contains
+	 * @return the user profile, returns null if the site is offline or UserProfile.id is null
+	 */
+	public static UserProfile parseUserProfileStats(byte[] data) throws ParserException {
+		final UserProfile up = new UserProfile();
+		String htmlStr = new String(data, UTF_8);
+		// check for offline indicator
+		if (htmlStr.contains("<title>Offline - ")) {
+			return null; 
+		}
+		Parser html = new Parser(htmlStr);
+		// filter question summaries
+		NodeList lst = html.parse(new NodeFilter() {
+			private static final long serialVersionUID = -3930964184187161561L;
+
+			@Override
+			public boolean accept(Node node) {
+				if (node instanceof Tag) {
+					Tag t = (Tag)node;
+					if (t.getTagName().equalsIgnoreCase("html")) {
+						return true;
+					}
+				}
+				return false;
+			}
+		});
+		if (lst.size() > 0) {
+			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+			visitor((Tag)lst.elementAt(0), new Associator() {
+				String currentTag;
+				BadgeEntry currentBadge;
+				/** The current reputation entry. */
+				@Override
+				public void associate(Tag t) {
+					if (t.getTagName().equalsIgnoreCase("img") && ((Tag)t.getParent()).getTagName().equalsIgnoreCase("td")) {
+						up.avatarUrl = replaceEntities(t.getAttribute("src"));
+					} else
+					if (tagWithAttrContains(t, "div", "class", "summarycount")) {
+						String s = getNumberFrom(t).trim();
+						up.reputation = Integer.parseInt(s);
+					} else
+					if (tagWithAttrContains(t, "td", "class", "summaryinfo")) {
+						String s = getTextOf(t);
+						if (s.endsWith("views") || s.endsWith("view")) {
+							s = getNumberFrom(s.substring(0, s.indexOf(' ')).trim());
+							up.reputation = Integer.parseInt(s);
+						}
+					} else
+					if (tagWithAttrEnds(t, "span", "title", "Z UTC")) {
+						String s = t.getAttribute("title");
+						s = s.substring(0, s.lastIndexOf("Z UTC"));
+						try {
+							up.lastSeen = sdf.parse(s).getTime();
+						} catch (ParseException e) {
+							e.printStackTrace();
+						}
+					} else
+					if (t.getTagName().equalsIgnoreCase("title")) {
+						String s = getTextOf(t).trim();
+						int uend = s.lastIndexOf('-');
+						if (s.startsWith("User ")) {
+							up.name = replaceEntities(s.substring(5, uend)).trim();
+						}
+					} else
+					if (tagWithAttrContains(t, "div", "class", "user-about-me")) {
+						up.description = t.getChildren().toHtml();
+					} else
+					if (tagWithAttrContains(t, "a", "class", "question-hyperlink")) {
+						String s = t.getAttribute("href");
+						up.questions.add(s.substring(11, s.indexOf('/', 12)));
+					} else
+					if (tagWithAttrContains(t, "a", "class", "answer-hyperlink")) {
+						String s = t.getAttribute("href");
+						String qid = s.substring(11, s.indexOf('/', 12));
+						String pid = s.substring(s.lastIndexOf("#") + 1);
+						up.answers.add(qid + "/" + pid);
+					} else
+					if (tagWithAttrContains(t, "span", "class", "vote-count-post") && tagWithAttrContains(t, "span", "title", "total number of")) {
+						String vt = t.getAttribute("title");
+						String v = getNumberFrom(t).trim();
+						if (vt.contains("up votes")) {
+							up.upvotes = Integer.parseInt(v);
+						} else
+						if (vt.contains("down votes")) {
+							up.downvotes = Integer.parseInt(v);
+						}
+					} else
+					if (tagWithAttrStarts(t, "a", "href", "/questions/tagged/")) {
+						// if no multiplier, post it with count 1
+						if (currentTag != null) {
+							up.tagActivity.put(currentTag, 1);
+							currentTag = null;
+						}
+						currentTag = replaceEntities(getTextOf(t));
+					} else
+					if (tagWithAttrContains(t, "span", "class", "item-multiplier") && (currentTag != null || currentBadge != null)) {
+						String v = getTextOf(t);
+						int j = v.length() - 1;
+						while (j >= 0 && (Character.isDigit(v.charAt(j)) || v.charAt(j) == '.' || v.charAt(j) == ',')) {
+							j--;
+						}
+						String v2 = v.substring(j + 1);
+						if (currentTag != null) {
+							up.tagActivity.put(currentTag, Integer.valueOf(v2));
+							currentTag = null;
+						} else
+						if (currentBadge != null) {
+							up.badgeActivity.put(currentBadge.id, currentBadge);
+							currentBadge = null;
+						}
+					} else
+					if (tagWithAttrContains(t, "a", "href", "/badges/") && tagWithAttrContains(t, "a", "class", "badge")) {
+						String v = t.getAttribute("href");
+						// if no counter, just post it with X 1
+						if (currentBadge != null) {
+							currentBadge.count = 1;
+							up.badgeActivity.put(currentBadge.id, currentBadge);
+							currentBadge = null;
+						}
+						currentBadge = new BadgeEntry();
+						currentBadge.id = v.substring(8, v.indexOf('/', 9));
+						currentBadge.title = t.getAttribute("title");
+						String s = getTextOf(t);
+						currentBadge.name = s.substring(s.lastIndexOf("&nbsp;") + 6);
+						if (currentBadge.title.startsWith("bronze badge:")) {
+							currentBadge.level = BadgeLevel.BRONZE;
+						} else
+						if (currentBadge.title.startsWith("silver badge:")) {
+							currentBadge.level = BadgeLevel.SILVER;
+						} else
+						if (currentBadge.title.startsWith("gold badge:")) {
+							currentBadge.level = BadgeLevel.GOLD;
+						}
+					}
+				}
+			});
+		}
+		return up;
+	}
+	public static void main(String[] args) throws Exception {
+		byte[] data = getAUserData("http://stackoverflow.com", "61158");
+		UserProfile up = parseUserProfileStats(data);
+		System.out.println(up);
 	}
 }

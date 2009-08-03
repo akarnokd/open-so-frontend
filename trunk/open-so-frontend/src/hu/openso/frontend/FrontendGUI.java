@@ -49,7 +49,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	protected boolean disableUsersChange;
 	private FrontendContext mainQuestionContext;
 	public FrontendGUI() {
-		super("Open Stack Overflow Frontend v" + version + " - Questions");
+		super("Open Stack Overflow Frontend v" + version);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
 			@Override

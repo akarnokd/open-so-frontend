@@ -8,11 +8,6 @@ import java.io.Serializable;
  */
 public class BadgeEntry implements Serializable {
 	private static final long serialVersionUID = -2632445767616664982L;
-	enum BadgeLevel {
-		BRONZE,
-		SILVER,
-		GOLD
-	}
 	public String id;
 	public String name;
 	/** The short badge description. */

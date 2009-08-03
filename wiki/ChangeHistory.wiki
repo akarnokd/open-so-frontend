@@ -1,6 +1,13 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.70a ==
+2009-08-03 23:27Z UTC
+
+  * Added ability to retrieve user profile for all 4 sites - but very few things are displayed now
+  * Added fancy reputation display bar with auto-refresh
+  * Added new version check
+
 == Version 0.62 ==
 2009-08-02 15:47Z UTC
 

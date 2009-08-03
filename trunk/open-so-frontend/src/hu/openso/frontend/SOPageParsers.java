@@ -1,6 +1,5 @@
 package hu.openso.frontend;
 
-import hu.openso.frontend.BadgeEntry.BadgeLevel;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -693,7 +692,10 @@ public class SOPageParsers {
 			client.executeMethod(post);
 		}		
 		HttpMethod method = new GetMethod(site + "/users/" + id + "?tab=stats");
-		client.executeMethod(method);
+		int ret = client.executeMethod(method);
+		if (ret != 200) {
+			System.err.println(ret);
+		}
 		byte[] data = method.getResponseBody();
 		method.releaseConnection();
 		return data;

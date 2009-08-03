@@ -31,7 +31,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -82,11 +82,6 @@ public class QuestionPanel extends JPanel {
 	JTextField page;
 	@SaveValue
 	JTextField pageSize;
-	ImageIcon rolling;
-	ImageIcon okay;
-	ImageIcon unknown;
-	ImageIcon error;
-	ImageIcon wiki;
 	@SaveValue
 	JComboBox sort;
 	JButton more;
@@ -103,7 +98,6 @@ public class QuestionPanel extends JPanel {
 	Timer refreshTimer;
 	int refreshCounter;
 	static final int REFRESH_TIME = 30;
-	ImageIcon goImage;
 	@SaveValue
 	JCheckBox[] siteUrls;
 	@SaveValue
@@ -120,8 +114,9 @@ public class QuestionPanel extends JPanel {
 	
 	private TitleWithClose tabTitle;
 	/** The question context object. */
-	private final QuestionContext qcontext;
-	Map<String, String> ignores = new HashMap<String, String>();
+	private final FrontendContext qctx;
+	/** The map of local ignores. */
+	Map<String, String> ignores = new LinkedHashMap<String, String>();
 	@SaveValue
 	private JTextField findValue;
 	private SwingWorker<Void, Void> wikiSwingWorker;
@@ -162,17 +157,17 @@ public class QuestionPanel extends JPanel {
 		public Object getValueAt(final int rowIndex, final int columnIndex) {
 			SummaryEntry se = questions.get(rowIndex);
 			switch (columnIndex) {
-			case 0: return qcontext.siteIcons.get(se.site);
-			case 1: return se.accepted ? okay : (se.deleted ? error : null);
+			case 0: return qctx.siteIcons.get(se.site);
+			case 1: return se.accepted ? qctx.okay : (se.deleted ? qctx.error : null);
 			case 2:
 				Boolean isWiki = se.wiki;
-				Boolean isKnown = qcontext.knownWikis.get(se.site + "/" + se.id);
+				Boolean isKnown = qctx.knownWikis.get(se.site + "/" + se.id);
 				if ((isWiki != null && isWiki.booleanValue()) 
 						|| (isKnown != null && isKnown.booleanValue())) {
-					return wiki;
+					return qctx.wiki;
 				} else
 				if (isWiki == null && isKnown == null) {
-					return unknown;
+					return qctx.unknown;
 				}
 				return null;
 			case 3: 
@@ -190,9 +185,9 @@ public class QuestionPanel extends JPanel {
 			case 9:
 				final String url = se.avatarUrl;
 				if (url != null) {
-					ImageIcon icon = qcontext.avatars.get(url);
+					ImageIcon icon = qctx.avatars.get(url);
 					if (icon == null) {
-						if (!qcontext.avatarsLoading.containsKey(url)) {
+						if (!qctx.avatarsLoading.containsKey(url)) {
 							loadImageFor(rowIndex, columnIndex, url);
 						}
 					}
@@ -230,14 +225,14 @@ public class QuestionPanel extends JPanel {
 		}
 		private void loadImageFor(final int rowIndex, final int columnIndex,
 				final String url) {
-			qcontext.exec.submit(new Runnable() {
+			qctx.exec.submit(new Runnable() {
 				@Override
 				public void run() {
 					try {
 //						System.out.printf("Getting avatar (%d): %s%n", rowIndex, url);
 						ImageIcon icon = new ImageIcon(ImageIO.read(new URL(url)));
-						qcontext.avatars.put(url, icon);
-						qcontext.avatarsLoading.remove(url);
+						qctx.avatars.put(url, icon);
+						qctx.avatarsLoading.remove(url);
 						doRefreshTable(rowIndex, columnIndex);
 					} catch (IOException ex) {
 						ex.printStackTrace();
@@ -349,22 +344,12 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 	}
-	public QuestionPanel(QuestionContext qcontext) {
-		this.qcontext = qcontext;
+	public QuestionPanel(FrontendContext qcontext) {
+		this.qctx = qcontext;
 		init();
 		
 	}
 	private void init() {
-		rolling = new ImageIcon(getClass().getResource("res/loading.gif"));
-		okay = new ImageIcon(getClass().getResource("res/ok.png"));
-		unknown = new ImageIcon(getClass().getResource("res/unknown.png"));
-		error = new ImageIcon(getClass().getResource("res/error.png"));
-		wiki = new ImageIcon(getClass().getResource("res/wiki.png"));
-		
-		qcontext.siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
-		qcontext.siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
-		qcontext.siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
-		qcontext.siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
 		
 		GroupLayout gl = new GroupLayout(this);
 		setLayout(gl);
@@ -414,8 +399,7 @@ public class QuestionPanel extends JPanel {
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		table.getTableHeader().setReorderingAllowed(true);
 		
-		goImage = new ImageIcon(getClass().getResource("res/go.png"));
-		go = new JButton(goImage);
+		go = new JButton(qctx.go);
 		go.setToolTipText("Read the first page of the selected sites and subpages");
 		ActionListener doRetrieveAction = new ActionListener() {
 			@Override
@@ -432,10 +416,10 @@ public class QuestionPanel extends JPanel {
 			new JCheckBox("http://superuser.com", false),
 		};
 		siteIconLabels  = new JLabel[] {
-			new JLabel(qcontext.siteIcons.get("stackoverflow.com")),	
-			new JLabel(qcontext.siteIcons.get("meta.stackoverflow.com")),	
-			new JLabel(qcontext.siteIcons.get("serverfault.com")),	
-			new JLabel(qcontext.siteIcons.get("superuser.com")),	
+			new JLabel(qctx.siteIcons.get("stackoverflow.com")),	
+			new JLabel(qctx.siteIcons.get("meta.stackoverflow.com")),	
+			new JLabel(qctx.siteIcons.get("serverfault.com")),	
+			new JLabel(qctx.siteIcons.get("superuser.com")),	
 		};
 		tags = new JTextField[] {
 			new JTextField(15),
@@ -489,7 +473,7 @@ public class QuestionPanel extends JPanel {
 		pageSize.setColumns(3);
 		pageSize.setToolTipText("The page size length between 1 and 50");
 		
-		more = new JButton(new ImageIcon(getClass().getResource("res/more.png")));
+		more = new JButton(qctx.more);
 		more.setToolTipText("Read the Nth page of the selected sites and subpages");
 		more.addActionListener(new ActionListener() {
 			@Override
@@ -894,10 +878,30 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 		
+		// XXX add new context menu items here
+		JMenuItem openUserLocally = new JMenuItem("Open user here");
+		openUserLocally.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserLocally();
+			}
+		});
+		JMenuItem openQuestionLocally = new JMenuItem("Open question here");
+		openQuestionLocally.setEnabled(false);
+		openUserLocally.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenQuestionLocally();
+			}
+		});
+		
 		menu.add(openQuestion);
 		menu.add(openUser);
 		menu.add(copyAvatarUrl);
 		menu.add(unread);
+		menu.addSeparator();
+		menu.add(openQuestionLocally);
+		menu.add(openUserLocally);
 		menu.addSeparator();
 		menu.add(wikiDelTest);
 		menu.add(wikiUntesed);
@@ -925,6 +929,22 @@ public class QuestionPanel extends JPanel {
 		wikiTestMenu.add(cancelWiki);
 	}
 	/**
+	 * 
+	 */
+	protected void doOpenQuestionLocally() {
+		// TODO Auto-generated method stub
+		
+	}
+	/**
+	 * 
+	 */
+	protected void doOpenUserLocally() {
+		SummaryEntry se = getSelectedEntry();
+		if (se != null) {
+			qctx.panelManager.openUser(se.site, se.userId, se.userName);
+		}
+	}
+	/**
 	 * Cancel running background wiki process
 	 */
 	protected void doCancelWiki() {
@@ -944,7 +964,7 @@ public class QuestionPanel extends JPanel {
 		final List<String> sites = new ArrayList<String>();
 		final List<String> ids = new ArrayList<String>();
 		for (SummaryEntry se : model.questions) {
-			if ((se.wiki == null && !qcontext.knownWikis.containsKey(se.site + "/" + se.id)) && !se.deleted) {
+			if ((se.wiki == null && !qctx.knownWikis.containsKey(se.site + "/" + se.id)) && !se.deleted) {
 				sites.add(se.site);
 				ids.add(se.id);
 			}
@@ -972,7 +992,7 @@ public class QuestionPanel extends JPanel {
 	 */
 	private void doProcessWikiBackground(final List<String> sites,
 			final List<String> ids) {
-		wikiBackgroundTask.setIcon(rolling);
+		wikiBackgroundTask.setIcon(qctx.rolling);
 		wikiBackgroundTask.setToolTipText("Analyzing all questions");
 		wikiSwingWorker = new SwingWorker<Void, Void>() {
 			@Override
@@ -1039,7 +1059,7 @@ public class QuestionPanel extends JPanel {
 					if (se.site.equals(qe.site) && se.id.equals(id)) {
 						se.wiki = qe.wiki;
 						se.deleted = isDeleted;
-						qcontext.knownWikis.put(qe.site + "/" + id, qe.wiki);
+						qctx.knownWikis.put(qe.site + "/" + id, qe.wiki);
 					}
 				}
 				model.fireTableDataChanged();
@@ -1075,8 +1095,8 @@ public class QuestionPanel extends JPanel {
 	 * 
 	 */
 	protected void doShowGlobalIgnores() {
-		qcontext.globalIgnoreListGUI.remapIgnores();
-		qcontext.globalIgnoreListGUI.setVisible(true);
+		qctx.globalIgnoreListGUI.remapIgnores();
+		qctx.globalIgnoreListGUI.setVisible(true);
 	}
 	/**
 	 * 
@@ -1106,10 +1126,10 @@ public class QuestionPanel extends JPanel {
 		if (table.getSelectedRow() >= 0) {
 			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
 			SummaryEntry se = model.questions.get(idx);
-			qcontext.globalIgnores.put(se.site + "/" + se.id, se.title);
+			qctx.globalIgnores.put(se.site + "/" + se.id, se.title);
 			model.questions.remove(idx);
 			model.fireTableRowsDeleted(idx, idx);
-			qcontext.globalIgnoreListGUI.remapIgnores();
+			qctx.globalIgnoreListGUI.remapIgnores();
 		}		
 	}
 	/**
@@ -1260,10 +1280,10 @@ public class QuestionPanel extends JPanel {
 			JLabel lbl = status[i];
 			if (cb.isSelected()) {
 				if (once) {
-					go.setIcon(rolling);
+					go.setIcon(qctx.rolling);
 					go.setEnabled(false);
 					more.setEnabled(false);
-					tabTitle.setIcon(rolling);
+					tabTitle.setIcon(qctx.rolling);
 					refreshTimer.stop();
 				}
 				
@@ -1328,7 +1348,7 @@ public class QuestionPanel extends JPanel {
 		}
 	}
 	public void initPanel(int panelIndex, Properties p) {
-		GUIUtils.saveLoadValues(this, false, p, panelIndex);
+		GUIUtils.saveLoadValues(this, false, p, "P" + panelIndex + "-");
 		// restore default sort order
 		DefaultRowSorter<?, ?> drs = (DefaultRowSorter<?, ?>)table.getRowSorter();
 		String sortKey = p.getProperty("P" + panelIndex + "-" + "SortKey");
@@ -1414,7 +1434,7 @@ public class QuestionPanel extends JPanel {
 		}
 	}
 	public void donePanel(int panelIndex, Properties p) {
-		GUIUtils.saveLoadValues(this, true, p, panelIndex);
+		GUIUtils.saveLoadValues(this, true, p, "P" + panelIndex + "-");
 		DefaultRowSorter<?, ?> drs = (DefaultRowSorter<?, ?>)table.getRowSorter();
 		List<? extends SortKey> list = drs.getSortKeys();
 		if (list.size() > 0) {
@@ -1472,7 +1492,7 @@ public class QuestionPanel extends JPanel {
 				if (ignores.containsKey(e.site + "/" + e.id)) {
 					continue;
 				}
-				if (qcontext.globalIgnores.containsKey(e.site + "/" + e.id)) {
+				if (qctx.globalIgnores.containsKey(e.site + "/" + e.id)) {
 					continue;
 				}
 				int i = 0;
@@ -1511,7 +1531,7 @@ public class QuestionPanel extends JPanel {
 				GUIUtils.autoResizeColWidth(table, model);
 				adjusted = true;
 			}
-			go.setIcon(goImage);
+			go.setIcon(qctx.go);
 			tabTitle.setIcon(null);
 			go.setEnabled(true);
 			more.setEnabled(true);

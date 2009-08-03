@@ -1,15 +1,19 @@
 package hu.openso.frontend;
 
 import java.awt.Component;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 import java.util.Properties;
 
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
+import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.SwingWorker;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableColumnModel;
@@ -80,7 +84,7 @@ public final class GUIUtils {
 	 * @param save if true the values are saved
 	 * @param p the properties to load/save from
 	 */
-	public static void saveLoadValues(Object instance, boolean save, Properties p, int panelIndex) {
+	public static void saveLoadValues(Object instance, boolean save, Properties p, String prefix) {
 		Class<?> clazz = instance.getClass();
 		for (Field f : clazz.getDeclaredFields()) {
 			SaveValue a = f.getAnnotation(SaveValue.class);
@@ -90,10 +94,10 @@ public final class GUIUtils {
 					if (o != null && Object[].class.isAssignableFrom(o.getClass())) {
 						Object[] objs = (Object[])o;
 						for (int i = 0; i < objs.length; i++) {
-							doObjectLoadSave(save, p, f, objs[i], i, panelIndex);
+							doObjectLoadSave(save, p, f, objs[i], i, prefix);
 						}
 					} else {
-						doObjectLoadSave(save, p, f, o, 0, panelIndex);
+						doObjectLoadSave(save, p, f, o, 0, prefix);
 					}
 				} catch (NumberFormatException ex) {
 					// ignored
@@ -105,26 +109,27 @@ public final class GUIUtils {
 			}
 		}
 	}
-	protected static void doObjectLoadSave(boolean save, Properties p, Field f, Object o, int index, int panelIndex) {
+	protected static void doObjectLoadSave(boolean save, Properties p, 
+			Field f, Object o, int index, String prefix) {
 		if (o instanceof JTextField) {
 			JTextField v = (JTextField)o;
 			if (save) {
 				String s = v.getText();
-				p.setProperty("P" + panelIndex + "-" + f.getName() + index, s != null ? s : "");
+				p.setProperty(prefix + f.getName() + index, s != null ? s : "");
 			} else {
-				v.setText(p.getProperty("P" + panelIndex + "-" + f.getName() + index));
+				v.setText(p.getProperty(prefix + f.getName() + index));
 			}
 		} else
 		if (o instanceof JComboBox) {
 			JComboBox v = (JComboBox)o;
 			if (save) {
 				if (v.isEditable()) {
-					p.setProperty("P" + panelIndex + "-" + f.getName() + index, v.getSelectedItem() != null ? v.getSelectedItem().toString() : "");
+					p.setProperty(prefix + f.getName() + index, v.getSelectedItem() != null ? v.getSelectedItem().toString() : "");
 				} else {
-					p.setProperty("P" + panelIndex + "-" + f.getName() + index, Integer.toString(v.getSelectedIndex()));
+					p.setProperty(prefix + f.getName() + index, Integer.toString(v.getSelectedIndex()));
 				}
 			} else {
-				String s = p.getProperty("P" + panelIndex + "-" + f.getName() + index);
+				String s = p.getProperty(prefix + f.getName() + index);
 				if (v.isEditable()) {
 					v.setSelectedItem(s);
 				} else {
@@ -135,18 +140,59 @@ public final class GUIUtils {
 		if (o instanceof JRadioButton) {
 			JRadioButton v = (JRadioButton)o;
 			if (save) {
-				p.setProperty("P" + panelIndex + "-" + f.getName() + index, v.isSelected() ? "true" : "false");
+				p.setProperty(prefix + f.getName() + index, v.isSelected() ? "true" : "false");
 			} else {
-				v.setSelected("true".equals(p.getProperty("P" + panelIndex + "-" + f.getName() + index)));
+				v.setSelected("true".equals(p.getProperty(prefix + f.getName() + index)));
 			}
 		}
 		if (o instanceof JCheckBox) {
 			JCheckBox v = (JCheckBox)o;
 			if (save) {
-				p.setProperty("P" + panelIndex + "-" + f.getName() + index, v.isSelected() ? "true" : "false");
+				p.setProperty(prefix + f.getName() + index, v.isSelected() ? "true" : "false");
 			} else {
-				v.setSelected("true".equals(p.getProperty("P" + panelIndex + "-" + f.getName() + index)));
+				v.setSelected("true".equals(p.getProperty(prefix + f.getName() + index)));
 			}
 		}
+	}
+	/**
+	 * Returns a SwingWorker for the given workitem object.
+	 * @param work the work item to do using SW.
+	 * @return the swing worker object
+	 */
+	public static SwingWorker<Void, Void> getWorker(final WorkItem work) { 
+		return new SwingWorker<Void, Void>() {
+			@Override
+			protected Void doInBackground() throws Exception {
+				work.run();
+				return null;
+			}
+			@Override
+			protected void done() {
+				work.done();
+			}
+		};
+	}
+	/**
+	 * Creates a mouse popup adapter for the given component and popup menu.
+	 * @param component the target component, non null
+	 * @param popup the popup menu, non null
+	 * @return the mouse adapter
+	 */
+	public static MouseAdapter getMousePopupAdapter(final Component component, final JPopupMenu popup) {
+		return new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				handlePopup(e);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				handlePopup(e);
+			}
+			private void handlePopup(MouseEvent e) {
+				if (e.isPopupTrigger()) {
+					popup.show(component, e.getX(), e.getY());
+				}
+			}
+		};
 	}
 }

@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Class-Path: .
-Main-Class: hu.openso.frontend.QuestionsGUI
+Main-Class: hu.openso.frontend.FrontendGUI
 
 Name: org/htmlparser/beans/StringBean.class
 Java-Bean: True

@@ -7,9 +7,11 @@ import java.lang.reflect.Field;
 import java.util.Properties;
 
 import javax.swing.JCheckBox;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
@@ -147,6 +149,22 @@ public final class GUIUtils {
 		}
 		if (o instanceof JCheckBox) {
 			JCheckBox v = (JCheckBox)o;
+			if (save) {
+				p.setProperty(prefix + f.getName() + index, v.isSelected() ? "true" : "false");
+			} else {
+				v.setSelected("true".equals(p.getProperty(prefix + f.getName() + index)));
+			}
+		} else
+		if (o instanceof JCheckBoxMenuItem) {
+			JCheckBoxMenuItem v = (JCheckBoxMenuItem)o;
+			if (save) {
+				p.setProperty(prefix + f.getName() + index, v.isSelected() ? "true" : "false");
+			} else {
+				v.setSelected("true".equals(p.getProperty(prefix + f.getName() + index)));
+			}
+		} else
+		if (o instanceof JRadioButtonMenuItem) {
+			JRadioButtonMenuItem v = (JRadioButtonMenuItem)o;
 			if (save) {
 				p.setProperty(prefix + f.getName() + index, v.isSelected() ? "true" : "false");
 			} else {

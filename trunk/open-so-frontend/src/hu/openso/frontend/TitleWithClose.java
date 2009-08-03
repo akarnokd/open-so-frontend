@@ -76,7 +76,7 @@ public class TitleWithClose extends JPanel {
 	}
 
 	protected void doRename() {
-		String value = JOptionPane.showInputDialog(this, "Please enter the name of the tab");
+		String value = JOptionPane.showInputDialog(this, "Please enter the name of the tab", title);
 		if (value != null) {
 			setTitle(value);
 		}

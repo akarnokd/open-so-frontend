@@ -31,7 +31,7 @@ import javax.swing.event.ChangeListener;
 
 public class FrontendGUI extends JFrame implements PanelManager {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.7";
+	static final String version = "0.70a";
 	
 	JTabbedPane listings;
 	/** The main views of the application. */
@@ -478,14 +478,16 @@ public class FrontendGUI extends JFrame implements PanelManager {
 		users.insertTab("", null, component, null, idx);
 		String title = null;
 		if (name != null) {
-			title = "User " + name + "("+ id + ")@" + site;
+			title = name + "@" + site;
 		} else {
-			title = "User " + id + " @ " + site;
+			title = id + " @ " + site;
 		}
 		TitleWithClose tabTitle = new TitleWithClose(title, users, component);
 		component.setTabTitle(tabTitle);
 		users.setTabComponentAt(idx, tabTitle);
 		views.setSelectedIndex(2);
 		users.setSelectedIndex(idx);
+		component.openUser(site, id);
+		component.doRetrieve();
 	}
 }

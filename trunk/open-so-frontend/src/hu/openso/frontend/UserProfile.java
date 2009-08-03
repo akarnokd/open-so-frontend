@@ -60,7 +60,7 @@ public class UserProfile implements Serializable {
 		int sum = 0;
 		for (BadgeEntry be : badgeActivity.values()) {
 			if (be.level == level) {
-				sum++;
+				sum += be.count;
 			}
 		}
 		return sum;

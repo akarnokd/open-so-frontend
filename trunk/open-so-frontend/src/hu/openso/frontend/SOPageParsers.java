@@ -733,21 +733,24 @@ public class SOPageParsers {
 			visitor((Tag)lst.elementAt(0), new Associator() {
 				String currentTag;
 				BadgeEntry currentBadge;
+				boolean repFound = false;
+				boolean badgeMode = false;
 				/** The current reputation entry. */
 				@Override
 				public void associate(Tag t) {
 					if (t.getTagName().equalsIgnoreCase("img") && ((Tag)t.getParent()).getTagName().equalsIgnoreCase("td")) {
 						up.avatarUrl = replaceEntities(t.getAttribute("src"));
 					} else
-					if (tagWithAttrContains(t, "div", "class", "summarycount")) {
+					if (tagWithAttrContains(t, "div", "class", "summarycount") && !repFound) {
 						String s = getNumberFrom(t).trim();
 						up.reputation = Integer.parseInt(s);
+						repFound = true;
 					} else
 					if (tagWithAttrContains(t, "td", "class", "summaryinfo")) {
 						String s = getTextOf(t);
 						if (s.endsWith("views") || s.endsWith("view")) {
 							s = getNumberFrom(s.substring(0, s.indexOf(' ')).trim());
-							up.reputation = Integer.parseInt(s);
+							up.views = Integer.parseInt(s);
 						}
 					} else
 					if (tagWithAttrEnds(t, "span", "title", "Z UTC")) {
@@ -804,25 +807,23 @@ public class SOPageParsers {
 							j--;
 						}
 						String v2 = v.substring(j + 1);
-						if (currentTag != null) {
+						if (currentTag != null && !badgeMode) {
 							up.tagActivity.put(currentTag, Integer.valueOf(v2));
 							currentTag = null;
 						} else
-						if (currentBadge != null) {
-							up.badgeActivity.put(currentBadge.id, currentBadge);
+						if (currentBadge != null && badgeMode) {
+							currentBadge.count = Integer.parseInt(v2);
 							currentBadge = null;
 						}
 					} else
 					if (tagWithAttrContains(t, "a", "href", "/badges/") && tagWithAttrContains(t, "a", "class", "badge")) {
 						String v = t.getAttribute("href");
+						badgeMode = true;
 						// if no counter, just post it with X 1
-						if (currentBadge != null) {
-							currentBadge.count = 1;
-							up.badgeActivity.put(currentBadge.id, currentBadge);
-							currentBadge = null;
-						}
 						currentBadge = new BadgeEntry();
 						currentBadge.id = v.substring(8, v.indexOf('/', 9));
+						currentBadge.count = 1;
+						up.badgeActivity.put(currentBadge.id, currentBadge);
 						currentBadge.title = t.getAttribute("title");
 						String s = getTextOf(t);
 						currentBadge.name = s.substring(s.lastIndexOf("&nbsp;") + 6);
@@ -834,6 +835,8 @@ public class SOPageParsers {
 						} else
 						if (currentBadge.title.startsWith("gold badge:")) {
 							currentBadge.level = BadgeLevel.GOLD;
+						} else {
+							System.err.println("Badge type mismatch: " + currentBadge.title);
 						}
 					}
 				}

@@ -75,6 +75,7 @@ public class ReputationPanel extends JComponent {
 	protected final Set<ActionListener> onRefreshCompleted = new LinkedHashSet<ActionListener>(); 
 	protected Map<String, ImageIcon> avatarLargeImages = new ConcurrentHashMap<String, ImageIcon>();
 	protected Map<String, String> avatarLargeImagesLoading = new ConcurrentHashMap<String, String>();
+	/** Set of site ids to indicate the last detected change was a downvote. */
 	public ReputationPanel(FrontendContext fctx) {
 		this.fctx = fctx;
 		setOpaque(true);
@@ -220,7 +221,7 @@ public class ReputationPanel extends JComponent {
 	/**
 	 * 
 	 */
-	private void doRefreshReputation() {
+	protected void doRefreshReputation() {
 		boolean once = true;
 		retrieveWip.set(userProfiles.size());
 		for (int i = 0; i < userProfiles.size(); i++) {
@@ -268,16 +269,26 @@ public class ReputationPanel extends JComponent {
 			UserProfile curr = userProfiles.get(index);
 			// analize difference
 			boolean diff = false;
-			upl.repChanged = upl.reputation - curr.reputation; 
-			diff |= upl.repChanged != 0;
+			int rdiff = upl.reputation - curr.reputation;
+			if (rdiff != 0) {
+				upl.repChanged = rdiff;
+			} else {
+				upl.repChanged = curr.repChanged;
+			}
+			diff |= rdiff != 0;
 			for (BadgeLevel bl : BadgeLevel.values()) {
 				int bdiff = upl.getBadgeCount(bl) - curr.getBadgeCount(bl);
-				upl.badgeChanged.put(bl, bdiff);
+				if (bdiff != 0) {
+					upl.badgeChanged.put(bl, bdiff);
+				} else {
+					upl.badgeChanged.put(bl, curr.badgeChanged.get(bl));
+				}
 				diff |= bdiff != 0;
 			}
 			upl.markRead = curr.markRead;
 			if (diff) {
 				upl.markRead = false;
+				upl.repChangedStrict = true;
 			}
 			userProfiles.set(index, upl);
 		}
@@ -420,6 +431,9 @@ public class ReputationPanel extends JComponent {
 	 * @param resize the optional size parameter to resize the image
 	 */
 	public void getUserAvatar(final String avatarUrl, final JLabel avatar, final Integer resize) {
+		if (avatarUrl == null) {
+			return;
+		}
 		ImageIcon ic = avatarLargeImages.get(avatarUrl);
 		if (ic != null) {
 			if (resize != null) {

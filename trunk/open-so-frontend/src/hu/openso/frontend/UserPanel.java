@@ -237,16 +237,28 @@ public class UserPanel extends JPanel {
 		avatar.addMouseListener(GUIUtils.getMousePopupAdapter(avatar, avatarMenu));
 	}
 	protected void doOpenFloat() {
+		ReputationPanel rp2 = new ReputationPanel(uctx);
 		if (isValidUser()) {
-			ReputationPanel rp2 = new ReputationPanel(uctx);
 			rp2.userProfiles.addAll(repPanel.userProfiles);
-			rp2.invertColor.setSelected(repPanel.invertColor.isSelected());
-			rp2.refreshToggle.setSelected(repPanel.refreshToggle.isSelected());
-			rp2.refreshFeedbackToggle.setSelected(repPanel.refreshFeedbackToggle.isSelected());
-			ReputationFloat rf = new ReputationFloat(rp2);
-			uctx.panelManager.registerRepFloat(rf);
-			rf.setVisible(true);
+		} else {
+			// no existing user profiles yet, construct them
+			for (int i = 0; i < sites.length; i++) {
+				String ui = userId[i].getText();
+				if (!ui.isEmpty()) {
+					UserProfile up = new UserProfile();
+					up.id = ui;
+					up.site = sites[i];
+					rp2.userProfiles.add(up);
+				}
+			}
 		}
+		rp2.invertColor.setSelected(repPanel.invertColor.isSelected());
+		rp2.refreshToggle.setSelected(repPanel.refreshToggle.isSelected());
+		rp2.refreshFeedbackToggle.setSelected(repPanel.refreshFeedbackToggle.isSelected());
+		ReputationFloat rf = new ReputationFloat(rp2);
+		uctx.panelManager.registerRepFloat(rf);
+		rp2.doRefreshReputation();
+		rf.setVisible(true);
 	}
 	/**
 	 * Creates the site boxes for the given groups

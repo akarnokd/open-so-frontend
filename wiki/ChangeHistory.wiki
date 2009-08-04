@@ -1,6 +1,12 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.72 ==
+2009-08-04 21:00Z UTC
+
+  * Some algorithmic and GUI enhancements on the [http://code.google.com/p/open-so-frontend/wiki/DownvoteDetection downvote detector]
+  * Added the ability to delete list entries with DEL, added popup menu option to open the user's recent activity page.
+
 == Version 0.71 ==
 2009-08-04 17:47Z UTC
 

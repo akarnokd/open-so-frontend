@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public class UserProfile implements Serializable {
-	private static final long serialVersionUID = 8851306148584096762L;
+	private static final long serialVersionUID = 8851306148584096763L;
 	/** The user id. */
 	public String id;
 	/** The site. */
@@ -51,6 +51,12 @@ public class UserProfile implements Serializable {
 	public final Map<String, BadgeEntry> badgeActivity = new HashMap<String, BadgeEntry>();
 	/** The list of user activity. */
 	public final List<Object> activity = new ArrayList<Object>();
+	/** Indicator that the reputation value changed since last seen. */
+	public int repChanged;
+	/** Mark this profile change as read. */
+	public boolean markRead;
+	/** Indicator that the badge counts changed since last seen. */
+	public final Map<BadgeLevel, Integer> badgeChanged = new HashMap<BadgeLevel, Integer>();
 	/**
 	 * Returns the number of badges for the given level.
 	 * @param level the badge level enum

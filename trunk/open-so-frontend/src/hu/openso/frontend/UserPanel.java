@@ -65,7 +65,7 @@ public class UserPanel extends JPanel {
 			"serverfault.com", "superuser.com"
 	};
 	private JLabel userName;
-	private int refreshTimeLimit = 20;
+	private int refreshTimeLimit = 30;
 	private int refreshTimeCount;
 	/** The page refresh timer. */
 	private Timer refreshTimer;
@@ -494,14 +494,21 @@ public class UserPanel extends JPanel {
 	 * @param site the site
 	 * @param id the user id
 	 */
-	public void openUser(String site, String id) {
+	public void openUser(String[] psites, String[] pids) {
 		for (int i = 0; i < sites.length; i++) {
-			if (sites[i].equals(site)) {
-				userId[i].setText(id);
-				doRetrieve();
-			} else {
-				userId[i].setText("");
+			userId[i].setText("");
+		}
+		boolean ret = false;
+		for (int j = 0; j < psites.length; j++) {
+			for (int i = 0; i < sites.length; i++) {
+				if (sites[i].equals(psites[j])) {
+					userId[i].setText(pids[j]);
+					ret = true;
+				}
 			}
+		}
+		if (ret) {
+			doRetrieve();
 		}
 	}
 	/**

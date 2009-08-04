@@ -941,7 +941,7 @@ public class QuestionPanel extends JPanel {
 	protected void doOpenUserLocally() {
 		SummaryEntry se = getSelectedEntry();
 		if (se != null) {
-			qctx.panelManager.openUser(se.site, se.userId, se.userName);
+			qctx.panelManager.openUser(new String[] { se.site }, new String[] { se.userId }, se.userName);
 		}
 	}
 	/**

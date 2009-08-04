@@ -188,6 +188,7 @@ public class QuestionPanel extends JPanel {
 					ImageIcon icon = qctx.avatars.get(url);
 					if (icon == null) {
 						if (!qctx.avatarsLoading.containsKey(url)) {
+							qctx.avatarsLoading.put(url, url);
 							loadImageFor(rowIndex, columnIndex, url);
 						}
 					}
@@ -481,12 +482,21 @@ public class QuestionPanel extends JPanel {
 				doGetMore();
 			}
 		});
-		clear = new JButton(new ImageIcon(getClass().getResource("res/clear.png")));
+		clear = new JButton(qctx.clear);
 		clear.setToolTipText("Clears the entire list of questions");
 		clear.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				doClearListing();
+			}
+		});
+		
+		JButton downVoter = new JButton(qctx.downvote);
+		downVoter.setToolTipText("Experimental: Start new downvote detector");
+		downVoter.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doStartDownvoteDetector();
 			}
 		});
 		
@@ -596,6 +606,7 @@ public class QuestionPanel extends JPanel {
 						.addComponent(pageSize, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE)
 						.addComponent(more)
 						.addComponent(clear)
+						.addComponent(downVoter)
 					)
 					.addGroup(
 						gl.createSequentialGroup()
@@ -659,6 +670,7 @@ public class QuestionPanel extends JPanel {
 						.addComponent(pageSize)
 						.addComponent(more)
 						.addComponent(clear)
+						.addComponent(downVoter)
 					)
 					.addGroup(
 						gl.createParallelGroup(Alignment.BASELINE)
@@ -674,7 +686,7 @@ public class QuestionPanel extends JPanel {
 				pg2
 			)
 		);
-		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, pageSize, clear));
+		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, pageSize, clear, downVoter));
 		for (int i = 0; i < siteUrls.length; i++) {
 			comps.add(siteIconLabels[i]);
 			comps.add(siteUrls[i]);
@@ -684,6 +696,12 @@ public class QuestionPanel extends JPanel {
 		gl.linkSize(SwingConstants.VERTICAL, findValue, findPrev, findNext);
 		
 		createMenu();
+	}
+	/**
+	 * Opens a new downvote detector window.
+	 */
+	protected void doStartDownvoteDetector() {
+		new DownvoteTracker(qctx).setVisible(true);
 	}
 	/**
 	 * @param e

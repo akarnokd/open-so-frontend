@@ -50,8 +50,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SortOrder;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.RowSorter.SortKey;
 import javax.swing.table.AbstractTableModel;
 
 import org.htmlparser.util.ParserException;
@@ -275,6 +277,7 @@ public class DownvoteTracker extends JFrame {
 		});
 		table.getColumnModel().getColumn(0).setPreferredWidth(170);
 		table.getColumnModel().getColumn(2).setPreferredWidth(250);
+		table.getRowSorter().setSortKeys(Collections.singletonList(new SortKey(0, SortOrder.DESCENDING)));
 		JScrollPane sp = new JScrollPane(table);
 
 		
@@ -324,11 +327,18 @@ public class DownvoteTracker extends JFrame {
 			dt.understood = true;
 			int idx = getSelectedIndex();
 			model.fireTableRowsUpdated(idx, idx);
+			setWindowTitle();
 		}
 		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() > 1) {
-			doOpenUser();
+			doOpenUserRecent();
 		}
 			
+	}
+	/**
+	 * Sets the window title based on the unread amount.
+	 */
+	private void setWindowTitle() {
+		setTitle(String.format("Experimental Downvote Detector: %s (%d)", sites.getSelectedItem(), getUnreadCount()));
 	}
 	void doTablePopupClick(MouseEvent e) {
 		if (e.isPopupTrigger()) {
@@ -347,6 +357,7 @@ public class DownvoteTracker extends JFrame {
 				, model.list.size(), before.size(), after.size(), userMemorySize
 				, activePageCount.get(), userPageCount.get(), newestPageCount.get()
 		));
+		doSiteSelectionChanged();
 	}
 	/**
 	 * @param avatarUrl
@@ -395,8 +406,20 @@ public class DownvoteTracker extends JFrame {
 		if (sites.getSelectedIndex() >= 0) {
 			siteIcon.setIcon(fctx.siteIcons.get(sites.getSelectedItem()));
 			setIconImage(fctx.siteIcons.get(sites.getSelectedItem()).getImage());
-			setTitle("Experimental Downvote Detector: " + sites.getSelectedItem());
+			setWindowTitle();
 		}
+	}
+	/**
+	 * @return the number of unread entries in the list
+	 */
+	private int getUnreadCount() {
+		int sum = 0;
+		for (DownvoteTarget dt : model.list) {
+			if (!dt.understood) {
+				sum++;
+			}
+		}
+		return sum;
 	}
 	/**
 	 * 
@@ -434,14 +457,22 @@ public class DownvoteTracker extends JFrame {
 		});
 
 		JMenuItem copyName = new JMenuItem("Copy name");
-		autoSize.addActionListener(new ActionListener() {
+		copyName.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				doCopyName();
 			}
 		});
+		JMenuItem openUserRecent = new JMenuItem("Open user recent");
+		openUserRecent.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserRecent();
+			}
+		});
 		
 		popup.add(openUser);
+		popup.add(openUserRecent);
 		popup.add(openUserHere);
 		popup.addSeparator();
 		popup.add(copyName);
@@ -449,6 +480,23 @@ public class DownvoteTracker extends JFrame {
 		popup.add(remove);
 		popup.addSeparator();
 		popup.add(autoSize);
+	}
+	/**
+	 * 
+	 */
+	protected void doOpenUserRecent() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			Desktop d = Desktop.getDesktop();
+			try {
+				String siteStr = (String)sites.getSelectedItem();
+				d.browse(new URI("http://" + siteStr + "/users/" + dt.id + "?tab=recent#sort-top"));
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			} catch (URISyntaxException ex) {
+				ex.printStackTrace();
+			}
+		}
 	}
 	/**
 	 * 

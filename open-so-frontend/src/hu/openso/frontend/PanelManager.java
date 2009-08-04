@@ -28,11 +28,11 @@ public interface PanelManager {
 	public void openQuestion(String site, String qid, String aid);
 	/**
 	 * Open a user settings
-	 * @param site the site name without http://
-	 * @param id the user id
+	 * @param sites the site names without http://
+	 * @param ids the user id on the sites
 	 * @param name the optional display name
 	 */
-	public void openUser(String site, String id, String name);
+	public void openUser(String[] site, String[] id, String name);
 	/**
 	 * Register the given reputation float window to auto-save it.
 	 * @param rf the reputation float.

@@ -496,23 +496,25 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	 * {@inheritDoc}
 	 */
 	@Override
-	public void openUser(String site, String id, String name) {
-		UserPanel component = new UserPanel(fctx);
-		int idx = users.getTabCount() - 1;
-		users.insertTab("", null, component, null, idx);
-		String title = null;
-		if (name != null) {
-			title = name + "@" + site;
-		} else {
-			title = id + " @ " + site;
+	public void openUser(String[] sites, String[] ids, String name) {
+		if (sites.length > 0 && sites.length == ids.length) {
+			UserPanel component = new UserPanel(fctx);
+			int idx = users.getTabCount() - 1;
+			users.insertTab("", null, component, null, idx);
+			String title = null;
+			if (name != null) {
+				title = name;
+			} else {
+				title = ids[0];
+			}
+			TitleWithClose tabTitle = new TitleWithClose(title, users, component);
+			component.setTabTitle(tabTitle);
+			users.setTabComponentAt(idx, tabTitle);
+			views.setSelectedIndex(2);
+			users.setSelectedIndex(idx);
+			component.openUser(sites, ids);
+			component.doRetrieve();
 		}
-		TitleWithClose tabTitle = new TitleWithClose(title, users, component);
-		component.setTabTitle(tabTitle);
-		users.setTabComponentAt(idx, tabTitle);
-		views.setSelectedIndex(2);
-		users.setSelectedIndex(idx);
-		component.openUser(site, id);
-		component.doRetrieve();
 	}
 	@Override
 	public void registerRepFloat(ReputationFloat rf) {

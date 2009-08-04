@@ -123,7 +123,26 @@ public class ReputationFloat extends JFrame {
                 setState (ICONIFIED);
 			}
 		});
+		JMenuItem openUser = new JMenuItem("Open user");
+		openUser.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				repPanel.doOpenUser();
+			}
+		});
+		
+		JMenuItem openUserHere = new JMenuItem("Open user here");
+		openUserHere.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				repPanel.doOpenUserHere();
+			}
+		});
+		
 		panelMenu.add(mnuMinimize);
+		panelMenu.addSeparator();
+		panelMenu.add(openUser);
+		panelMenu.add(openUserHere);
 		panelMenu.addSeparator();
 		panelMenu.add(mnuClose);
 		panelMenu.add(mnuCloseForget);
@@ -137,6 +156,7 @@ public class ReputationFloat extends JFrame {
 		avatar.addMouseListener(moveAdapter);
 		avatar.addMouseMotionListener(moveAdapter);
 
+// TODO removed drag support from the repPanel to do not conflict with the read notification
 		repPanel.addMouseListener(moveAdapter);
 		repPanel.addMouseMotionListener(moveAdapter);
 		
@@ -189,7 +209,6 @@ public class ReputationFloat extends JFrame {
 			avatar.setToolTipText(repPanel.userProfiles.get(0).name);
 			repPanel.getUserAvatar(repPanel.userProfiles.get(0).avatarUrl, avatar, 54);
 			repaint();
-			System.out.printf("%d, %d%n", getWidth(), getHeight());
 		}
 	}
 //	@Override
@@ -212,6 +231,8 @@ public class ReputationFloat extends JFrame {
 		rect.width = Integer.parseInt(p.getProperty("FWidth" + index));
 		rect.height = Integer.parseInt(p.getProperty("FHeight" + index));
 		setBounds(rect);
+		String winstat = p.getProperty("FWindowStatus");
+		setExtendedState(Integer.parseInt(winstat));
 		String ql = p.getProperty("F" + index + "-" + "UserProfiles");
 		if (ql != null) {
 			try {
@@ -237,6 +258,7 @@ public class ReputationFloat extends JFrame {
 		p.setProperty("FY" + index, Integer.toString(rect.y));
 		p.setProperty("FWidth" + index, Integer.toString(rect.width));
 		p.setProperty("FHeight" + index, Integer.toString(rect.height));
+		p.setProperty("FWindowStatus", Integer.toString(getExtendedState()));
 		// save current profile values
 		ByteArrayOutputStream bout = new ByteArrayOutputStream(16 * 1024);
 		try {

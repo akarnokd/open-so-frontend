@@ -8,6 +8,7 @@
 package hu.openso.frontend;
 
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -17,7 +18,12 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -52,7 +58,7 @@ public class ReputationPanel extends JComponent {
 	int awidth = 200;
 	DecimalFormat df = new DecimalFormat("#,###");
 	/** Invert the color scheme? */
-	private int refreshTimeLimit = 20;
+	private int refreshTimeLimit = 30;
 	private int refreshTimeCount;
 	/** The page refresh timer. */
 	private Timer refreshTimer;
@@ -64,6 +70,8 @@ public class ReputationPanel extends JComponent {
 	JCheckBoxMenuItem invertColor;
 	@SaveValue
 	JCheckBoxMenuItem refreshFeedbackToggle;
+	/** Value change noticed. */
+	boolean noticed;
 	protected final Set<ActionListener> onRefreshCompleted = new LinkedHashSet<ActionListener>(); 
 	protected Map<String, ImageIcon> avatarLargeImages = new ConcurrentHashMap<String, ImageIcon>();
 	protected Map<String, String> avatarLargeImagesLoading = new ConcurrentHashMap<String, String>();
@@ -113,7 +121,26 @@ public class ReputationPanel extends JComponent {
 			}
 		});
 		
+		JMenuItem openUser = new JMenuItem("Open user");
+		openUser.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUser();
+			}
+		});
+		
+		JMenuItem openUserHere = new JMenuItem("Open user here");
+		openUserHere.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserHere();
+			}
+		});
+		
 		repPopup.add(refreshNow);
+		repPopup.addSeparator();
+		repPopup.add(openUser);
+		repPopup.add(openUserHere);
 		repPopup.addSeparator();
 		repPopup.add(invertColor);
 		repPopup.add(refreshToggle);
@@ -127,6 +154,46 @@ public class ReputationPanel extends JComponent {
 			}
 		});
 		refreshTimeCount = refreshTimeLimit;
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				doMarkRead(e);
+			}
+		});
+	}
+	protected void doOpenUserHere() {
+		// TODO Auto-generated method stub
+		String[] sites = new String[userProfiles.size()];
+		String[] ids = new String[userProfiles.size()];
+		String name = null;
+		for (int i = 0; i < userProfiles.size(); i++) {
+			UserProfile up = userProfiles.get(i);
+			sites[i] = up.site;
+			ids[i] = up.id;
+			name = up.name;
+		}
+		fctx.panelManager.openUser(sites, ids, name);
+	}
+	protected void doOpenUser() {
+		Desktop d = Desktop.getDesktop();
+		try {
+			for (UserProfile up : userProfiles) {
+				d.browse(new URI("http://" + up.site + "/users/" + up.id));
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} catch (URISyntaxException ex) {
+			ex.printStackTrace();
+		}
+	}
+	/** Mark elements as read. */
+	protected void doMarkRead(MouseEvent e) {
+		if (e.getButton() == MouseEvent.BUTTON1) {
+			for (UserProfile up : userProfiles) {
+				up.markRead = true;
+			}
+			repaint();
+		}
 	}
 	/**
 	 * Copy the reputation panel image to clipboard.
@@ -182,7 +249,7 @@ public class ReputationPanel extends JComponent {
 						upl.site = sid;
 						upl.id = uid;
 					}
-					userProfiles.set(index, upl);
+					updateUserProfile(index, upl);
 					repaint();
 					if (retrieveWip.decrementAndGet() <= 0) {
 						if (refreshToggle.isSelected()) {
@@ -194,6 +261,25 @@ public class ReputationPanel extends JComponent {
 					}
 				}
 			}).execute();
+		}
+	}
+	protected void updateUserProfile(int index, UserProfile upl) {
+		if (upl.avatarUrl != null) {
+			UserProfile curr = userProfiles.get(index);
+			// analize difference
+			boolean diff = false;
+			upl.repChanged = upl.reputation - curr.reputation; 
+			diff |= upl.repChanged != 0;
+			for (BadgeLevel bl : BadgeLevel.values()) {
+				int bdiff = upl.getBadgeCount(bl) - curr.getBadgeCount(bl);
+				upl.badgeChanged.put(bl, bdiff);
+				diff |= bdiff != 0;
+			}
+			upl.markRead = curr.markRead;
+			if (diff) {
+				upl.markRead = false;
+			}
+			userProfiles.set(index, upl);
 		}
 	}
 	/**
@@ -251,13 +337,27 @@ public class ReputationPanel extends JComponent {
 				int w = fm1.stringWidth(v);
 				g2.setColor(new Color(bgl.color));
 				g2.drawString(badgeChar, x + awidth - 3 - bcw, y);
-				g2.setColor(!invert ? Color.BLACK : Color.WHITE);
+				Integer bold = 0;
+				if (up.badgeChanged != null) {
+					bold = up.badgeChanged.get(bgl); 
+				}
+				if (!up.markRead && bold != null && bold != 0) {
+					g2.setColor(bold < 0 ? Color.RED : Color.GREEN);
+				} else {
+					g2.setColor(!invert ? Color.BLACK : Color.WHITE);
+				}
 				g2.drawString(v, x + awidth - 6 - bcw - w, y);
 				y -= 12;
 			}
 			
 			f = f.deriveFont(Font.BOLD, 36.0f);
 			g2.setFont(f);
+			
+			if (!up.markRead && up.repChanged != 0) {
+				g2.setColor(up.repChanged < 0 ? Color.RED : Color.GREEN);
+			} else {
+				g2.setColor(!invert ? Color.BLACK : Color.WHITE);
+			}
 			
 			g2.drawString(df.format(up.reputation), rx + 2, getHeight() - g2.getFontMetrics().getDescent());
 			

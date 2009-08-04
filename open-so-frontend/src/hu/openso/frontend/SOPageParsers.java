@@ -134,6 +134,8 @@ public class SOPageParsers {
 	public static byte[] getAQuestionData(String site, String id) throws IOException, HttpException,
 	FileNotFoundException {
 		HttpClient client = new HttpClient();
+		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
+	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
 		// TODO if it is superuser, lie us in
 		if (site.contains("superuser.com")) {
 			PostMethod post = new PostMethod(site + "/beta-access");
@@ -685,6 +687,11 @@ public class SOPageParsers {
 	public static byte[] getAUserData(String site, String id) throws IOException, HttpException,
 	FileNotFoundException {
 		HttpClient client = new HttpClient();
+		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
+	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
+		client.getParams().setParameter("Connection", "close");
+		client.getParams().setParameter("Cache-Control", "no-cache");
+		client.getParams().setParameter("Pragma", "no-cache");
 		// TODO if it is superuser, lie us in
 		if (site.contains("superuser.com")) {
 			PostMethod post = new PostMethod(site + "/beta-access");

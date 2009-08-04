@@ -352,7 +352,7 @@ public class QuestionPanel extends JPanel {
 			@Override
 			public void run() {
 				if (model.questions.size() > row) {
-					model.fireTableCellUpdated(row, col);
+					model.fireTableRowsUpdated(0, table.getRowCount() - 1);
 				}
 			}
 		});
@@ -1178,7 +1178,7 @@ public class QuestionPanel extends JPanel {
 						qctx.knownWikis.put(qe.site + "/" + id, qe.wiki);
 					}
 				}
-				model.fireTableDataChanged();
+				model.fireTableRowsUpdated(0, model.questions.size() - 1);
 				if (total > 0) {
 					wikiBackgroundTask.setText(index + "/" + total);
 				}

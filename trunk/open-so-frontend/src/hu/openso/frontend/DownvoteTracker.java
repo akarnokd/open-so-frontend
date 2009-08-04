@@ -9,6 +9,11 @@ package hu.openso.frontend;
 
 import java.awt.Container;
 import java.awt.Desktop;
+import java.awt.Toolkit;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -427,13 +432,37 @@ public class DownvoteTracker extends JFrame {
 				doAutoSize();
 			}
 		});
+
+		JMenuItem copyName = new JMenuItem("Copy name");
+		autoSize.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doCopyName();
+			}
+		});
 		
 		popup.add(openUser);
 		popup.add(openUserHere);
 		popup.addSeparator();
+		popup.add(copyName);
+		popup.addSeparator();
 		popup.add(remove);
 		popup.addSeparator();
 		popup.add(autoSize);
+	}
+	/**
+	 * 
+	 */
+	protected void doCopyName() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(dt.name), new ClipboardOwner() {
+				@Override
+				public void lostOwnership(Clipboard clipboard, Transferable contents) {
+					// nothing
+				}
+			});		
+		}
 	}
 	/**
 	 * 

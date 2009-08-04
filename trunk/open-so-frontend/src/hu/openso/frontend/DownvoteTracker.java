@@ -11,6 +11,8 @@ import java.awt.Container;
 import java.awt.Desktop;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
@@ -111,7 +113,7 @@ public class DownvoteTracker extends JFrame {
 		public int getRowCount() {
 			return list.size();
 		}
-		SimpleDateFormat sdf = new SimpleDateFormat("'<html>'yyyy-MM-dd' 'HH:mm:ss");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		@Override
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			DownvoteTarget dt = list.get(rowIndex);
@@ -131,7 +133,7 @@ public class DownvoteTracker extends JFrame {
 				}
 				return null;
 			case 3:
-				return dt.name;
+				return dt.understood ? dt.name : "<html><b style='bacground-color: #FFCCCC;'>" + dt.name;
 			case 4:
 				return dt.repBefore;
 			case 5:
@@ -234,8 +236,21 @@ public class DownvoteTracker extends JFrame {
 		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		table.setRowHeight(32);
 		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		table.addMouseListener(GUIUtils.getMousePopupAdapter(table, popup));
 		table.setFont(statusLabel.getFont().deriveFont(16.0f));
+		table.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				doTableClicked();
+			}
+			@Override
+			public void mousePressed(MouseEvent e) {
+				doTablePopupClick(e);
+			}
+			@Override
+			public void mouseReleased(MouseEvent e) {
+				doTablePopupClick(e);
+			}
+		});
 		JScrollPane sp = new JScrollPane(table);
 
 		
@@ -274,6 +289,26 @@ public class DownvoteTracker extends JFrame {
 		setRefreshLabel();
 		updateStatusLabel();
 		pack();
+	}
+	/**
+	 * 
+	 */
+	protected void doTableClicked() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			dt.understood = true;
+			int idx = getSelectedIndex();
+			model.fireTableRowsUpdated(idx, idx);
+		}
+	}
+	void doTablePopupClick(MouseEvent e) {
+		if (e.isPopupTrigger()) {
+			int i = table.rowAtPoint(e.getPoint());
+			if (i >= 0 && i < table.getRowCount()) {
+				table.getSelectionModel().setSelectionInterval(i, i);
+			}
+			popup.show(e.getComponent(), e.getX(), e.getY());
+		}
 	}
 	/** Update the status label. */
 	protected void updateStatusLabel() {

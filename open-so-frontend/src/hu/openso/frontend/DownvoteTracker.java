@@ -57,13 +57,22 @@ import org.htmlparser.util.ParserException;
  * @version $Revision 1.0$
  */
 public class DownvoteTracker extends JFrame {
+	/** The serial version id. */
+	private static final long serialVersionUID = 3094478885868144996L;
 	/** Constant to sleep between page retrievals. */
 	private static final int SLEEP_BETWEEN_PAGES = 1000;
 	/** Constant for how many subsequent pages to load. */
 	private static final int NUMBER_OF_ACTIVE_PAGES = 4;
+	/** The number of user pages to scan- */
 	private static final int NUMBER_OF_USER_PAGES = 6;
-	private static final long serialVersionUID = 3094478885868144996L;
-	static class DownvoteTarget {
+	/** The number of pages to scan from the newest type. */
+	protected static final int NUMBER_OF_NEWEST_PAGES = 3;
+	/**
+	 * Record to store downvote target information.
+	 * @author karnokd, 2009.08.04.
+	 * @version $Revision 1.0$
+	 */
+	public static class DownvoteTarget {
 		/** The destination site. */
 		String site;
 		/** The user identifier. */
@@ -170,6 +179,7 @@ public class DownvoteTracker extends JFrame {
 	volatile int userMemorySize;
 	final AtomicInteger activePageCount = new AtomicInteger(0);
 	final AtomicInteger userPageCount = new AtomicInteger(0);
+	final AtomicInteger newestPageCount = new AtomicInteger(0);
 	private JLabel statusLabel;
 	/**
 	 * Constructor. Initializes the panel.
@@ -192,7 +202,7 @@ public class DownvoteTracker extends JFrame {
 		gl.setAutoCreateContainerGaps(true);
 		gl.setAutoCreateGaps(true);
 		
-		siteIcon = new JLabel(fctx.siteIcons.get("stackoverflow.com"));
+		siteIcon = new JLabel();
 		sites = new JComboBox(new String[] { "stackoverflow.com" , "meta.stackoverflow.com", "serverfault.com", "superuser.com"} );
 		sites.setSelectedIndex(0);
 		sites.addActionListener(new ActionListener() {
@@ -247,7 +257,7 @@ public class DownvoteTracker extends JFrame {
 		table.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
-				doTableClicked();
+				doTableClicked(e);
 			}
 			@Override
 			public void mousePressed(MouseEvent e) {
@@ -297,18 +307,23 @@ public class DownvoteTracker extends JFrame {
 		refreshTimeValue = refreshTimeLimit;
 		setRefreshLabel();
 		updateStatusLabel();
+		doSiteSelectionChanged();
 		pack();
 	}
 	/**
 	 * 
 	 */
-	protected void doTableClicked() {
+	protected void doTableClicked(MouseEvent e) {
 		DownvoteTarget dt = getSelectedItem();
 		if (dt != null) {
 			dt.understood = true;
 			int idx = getSelectedIndex();
 			model.fireTableRowsUpdated(idx, idx);
 		}
+		if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() > 1) {
+			doOpenUser();
+		}
+			
 	}
 	void doTablePopupClick(MouseEvent e) {
 		if (e.isPopupTrigger()) {
@@ -323,9 +338,9 @@ public class DownvoteTracker extends JFrame {
 	protected void updateStatusLabel() {
 		statusLabel.setText(String.format("Entries: %d | Before count: %d "
 				+ "| After count: %d | User memory: %d "
-				+ "| Current active page %d | Current user page %d"
+				+ "| Current active page %d | Current user page %d | Current newest page %d"
 				, model.list.size(), before.size(), after.size(), userMemorySize
-				, activePageCount.get(), userPageCount.get()
+				, activePageCount.get(), userPageCount.get(), newestPageCount.get()
 		));
 	}
 	/**
@@ -374,6 +389,8 @@ public class DownvoteTracker extends JFrame {
 	protected void doSiteSelectionChanged() {
 		if (sites.getSelectedIndex() >= 0) {
 			siteIcon.setIcon(fctx.siteIcons.get(sites.getSelectedItem()));
+			setIconImage(fctx.siteIcons.get(sites.getSelectedItem()).getImage());
+			setTitle("Experimental Downvote Detector: " + sites.getSelectedItem());
 		}
 	}
 	/**
@@ -504,11 +521,15 @@ public class DownvoteTracker extends JFrame {
 			public void run() {
 				try {
 					out = new ArrayList<SummaryEntry>(beforeSize);
-					Future<List<SummaryEntry>> active = loadSummaryEntries(siteStr, 
-							tagStr.isEmpty() ? null : tagStr);
+					Future<List<SummaryEntry>> active = loadSummaryEntries(siteStr, "active",
+							tagStr.isEmpty() ? null : tagStr, NUMBER_OF_ACTIVE_PAGES, activePageCount);
+					
+					Future<List<SummaryEntry>> newest = loadSummaryEntries(siteStr, "newest",
+							tagStr.isEmpty() ? null : tagStr, NUMBER_OF_NEWEST_PAGES, newestPageCount); 
 					
 					Future<List<SummaryEntry>> users = getTopUsers(siteStr);
 					
+					out.addAll(newest.get());
 					out.addAll(active.get());
 					out.addAll(users.get());
 					targets = checkForDownvotes(before, out, false);
@@ -595,18 +616,20 @@ public class DownvoteTracker extends JFrame {
 	 * @throws IOException if an error occurs
 	 * @throws ParserException if an error occurs
 	 */
-	public Future<List<SummaryEntry>> loadSummaryEntries(final String site, final String tags) {
-		activePageCount.set(0);
+	public Future<List<SummaryEntry>> loadSummaryEntries(final String site, 
+			final String type, final String tags, final int maxPage, 
+			final AtomicInteger counter) {
+		counter.set(0);
 		updateStatusLabel();
 		return fctx.exec.submit(
 			new Callable<List<SummaryEntry>>() {
 				@Override
 				public List<SummaryEntry> call() throws Exception {
 					List<SummaryEntry> out = new ArrayList<SummaryEntry>();
-					for (int i = 0; i < NUMBER_OF_ACTIVE_PAGES; i++) {
-						activePageCount.set(i);
+					for (int i = 0; i < maxPage; i++) {
+						counter.set(i);
 						updateStatusLabelEDT();
-						byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, "active", i, 50);
+						byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, type, i, 50);
 						out.addAll(SOPageParsers.processMainPage(data));
 						if (i < NUMBER_OF_ACTIVE_PAGES - 1) {
 							try {
@@ -666,7 +689,7 @@ public class DownvoteTracker extends JFrame {
 				target.questionsAfter.add(a);
 			}
 		}
-		int[] diffDownvoteGiver = { -1, -3, -5, -7, 9, 7, 5, 3, 19, 17, 13,  29, 27, 25, 23, 39, 37, 35, 33, 49, 47, 45, 43  };
+		int[] diffDownvoteGiver = { -1, -3, -5, -7, 9, 7, 5, 3, 19, 17, 13,  29, 27, 23, 39, 37, 33, 49, 47, 43  };
 		int[] diffDownvoteReceiver = { -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 12, 28, 26, 24, 22, 38, 36, 34, 32, 48, 46, 44, 42 };
 		// filter those records from users who did not appear after - no diff there
 		for (DownvoteTarget dt : new ArrayList<DownvoteTarget>(users.values())) {

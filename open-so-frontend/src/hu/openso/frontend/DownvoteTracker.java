@@ -258,6 +258,8 @@ public class DownvoteTracker extends JFrame {
 				doTablePopupClick(e);
 			}
 		});
+		table.getColumnModel().getColumn(0).setPreferredWidth(170);
+		table.getColumnModel().getColumn(2).setPreferredWidth(250);
 		JScrollPane sp = new JScrollPane(table);
 
 		
@@ -320,7 +322,7 @@ public class DownvoteTracker extends JFrame {
 	/** Update the status label. */
 	protected void updateStatusLabel() {
 		statusLabel.setText(String.format("Entries: %d | Before count: %d "
-				+ "| After count: %d | User memory: %d"
+				+ "| After count: %d | User memory: %d "
 				+ "| Current active page %d | Current user page %d"
 				, model.list.size(), before.size(), after.size(), userMemorySize
 				, activePageCount.get(), userPageCount.get()
@@ -540,6 +542,11 @@ public class DownvoteTracker extends JFrame {
 	protected Future<List<SummaryEntry>> getTopUsers(final String site) {
 		userPageCount.set(0);
 		updateStatusLabel();
+		int j = 0;
+		if ("stackoverflow.com".equals(site)) {
+			j = 7; // TODO hack because over 10k there is not enough detail to detect -1 change
+		}
+		final int startpage = j;
 		return fctx.exec.submit(
 			new Callable<List<SummaryEntry>>() {
 				@Override
@@ -548,7 +555,7 @@ public class DownvoteTracker extends JFrame {
 					for (int i = 0; i < NUMBER_OF_USER_PAGES; i++) {
 						userPageCount.set(i);
 						updateStatusLabelEDT();
-						byte[] data = SOPageParsers.getUsers("http://" + site, i);
+						byte[] data = SOPageParsers.getUsers("http://" + site, startpage + i);
 						for (BasicUserInfo bui : SOPageParsers.parseUsers(data)) {
 							SummaryEntry se = new SummaryEntry();
 							se.userId = bui.id;

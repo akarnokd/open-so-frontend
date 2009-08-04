@@ -16,6 +16,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
@@ -383,6 +385,12 @@ public class QuestionPanel extends JPanel {
 			@Override
 			public void valueChanged(ListSelectionEvent e) {
 				doQuestionClick();
+			}
+		});
+		table.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				doKeyPressed(e);
 			}
 		});
 		table.getColumnModel().getColumn(7).setCellRenderer(new CustomCellRenderer());
@@ -969,6 +977,22 @@ public class QuestionPanel extends JPanel {
 				} catch (URISyntaxException e1) {
 					e1.printStackTrace();
 				}
+			}
+		}
+	}
+	/**
+	 * Delete the selected entry
+	 * @param e
+	 */
+	protected void doKeyPressed(KeyEvent e) {
+		// TODO Auto-generated method stub
+		if (e.getKeyCode() == KeyEvent.VK_DELETE) {
+			int idx = table.getSelectedRow();
+			doRemoveFromList();
+			if (idx < table.getRowCount()) {
+				table.getSelectionModel().setSelectionInterval(idx, idx);
+			} else {
+				table.getSelectionModel().setSelectionInterval(idx - 1, idx - 1);
 			}
 		}
 	}

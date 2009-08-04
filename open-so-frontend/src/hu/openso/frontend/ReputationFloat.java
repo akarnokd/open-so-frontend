@@ -208,6 +208,7 @@ public class ReputationFloat extends JFrame {
 		if (repPanel.userProfiles.size() > 0) {
 			avatar.setToolTipText(repPanel.userProfiles.get(0).name);
 			repPanel.getUserAvatar(repPanel.userProfiles.get(0).avatarUrl, avatar, 54);
+			setTitle(getFirstUserName(repPanel));
 			repaint();
 		}
 	}

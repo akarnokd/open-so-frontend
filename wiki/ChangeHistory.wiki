@@ -1,6 +1,13 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.71 ==
+2009-08-04 17:47Z UTC
+
+  * The reputation meter has been upgraded and fixed
+  * Added an _experimental_ Downvote tracker, which *might* show the person who downvoted you, but there are still limitations.
+  * Some GUI bugfixes
+
 == Version 0.70a ==
 2009-08-03 23:27Z UTC
 

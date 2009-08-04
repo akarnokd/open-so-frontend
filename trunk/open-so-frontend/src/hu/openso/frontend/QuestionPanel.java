@@ -896,7 +896,6 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 		
-		// XXX add new context menu items here
 		JMenuItem openUserLocally = new JMenuItem("Open user here");
 		openUserLocally.addActionListener(new ActionListener() {
 			@Override
@@ -912,9 +911,17 @@ public class QuestionPanel extends JPanel {
 				doOpenQuestionLocally();
 			}
 		});
+		JMenuItem openUserRecent = new JMenuItem("Open user recent");
+		openUserRecent.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserRecent();
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
+		menu.add(openUserRecent);
 		menu.add(copyAvatarUrl);
 		menu.add(unread);
 		menu.addSeparator();
@@ -945,6 +952,25 @@ public class QuestionPanel extends JPanel {
 		});
 		
 		wikiTestMenu.add(cancelWiki);
+	}
+	/**
+	 * 
+	 */
+	protected void doOpenUserRecent() {
+		if (table.getSelectedRow() >= 0) {
+			Desktop d = Desktop.getDesktop();
+			int idx = table.getRowSorter().convertRowIndexToModel(table.getSelectedRow());
+			if (d != null) {
+				try {
+					SummaryEntry se = model.questions.get(idx);
+					d.browse(new URI("http://" + se.site + "/users/" +se.userId + "?tab=recent#sort-top"));
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				} catch (URISyntaxException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
 	}
 	/**
 	 * 

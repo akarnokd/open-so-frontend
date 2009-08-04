@@ -22,6 +22,7 @@ import java.net.URL;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,7 +134,7 @@ public class DownvoteTracker extends JFrame {
 				}
 				return null;
 			case 3:
-				return dt.understood ? dt.name : "<html><b style='bacground-color: #FFCCCC;'>" + dt.name;
+				return dt.understood ? dt.name : "<html><font color='red'>" + dt.name;
 			case 4:
 				return dt.repBefore;
 			case 5:
@@ -163,6 +164,8 @@ public class DownvoteTracker extends JFrame {
 	JButton clear;
 	List<SummaryEntry> before = new ArrayList<SummaryEntry>();
 	List<SummaryEntry> after = new ArrayList<SummaryEntry>();
+	Map<String, DownvoteTarget> downvoteMemory = Collections.synchronizedMap(new HashMap<String, DownvoteTarget>());
+	volatile int userMemorySize;
 	private JLabel statusLabel;
 	/**
 	 * Constructor. Initializes the panel.
@@ -312,7 +315,8 @@ public class DownvoteTracker extends JFrame {
 	}
 	/** Update the status label. */
 	protected void updateStatusLabel() {
-		statusLabel.setText(String.format("Entries: %d | Before count: %d | After count %d", model.list.size(), before.size(), after.size()));
+		statusLabel.setText(String.format("Entries: %d | Before count: %d | After count: %d | User memory: %d", 
+				model.list.size(), before.size(), after.size(), userMemorySize));
 	}
 	/**
 	 * @param avatarUrl
@@ -525,7 +529,7 @@ public class DownvoteTracker extends JFrame {
 	 * @param after the list of questions after
 	 * @param debug print findings instantly
 	 */
-	public static List<DownvoteTarget> checkForDownvotes(List<SummaryEntry> before, 
+	public List<DownvoteTarget> checkForDownvotes(List<SummaryEntry> before, 
 			List<SummaryEntry> after, boolean debug) {
 		long analysisTimestamp = System.currentTimeMillis();
 		Map<String, DownvoteTarget> users = new HashMap<String, DownvoteTarget>();
@@ -542,7 +546,9 @@ public class DownvoteTracker extends JFrame {
 				target.avatarUrl = b.avatarUrl;
 				target.analysisTimestamp = analysisTimestamp;
 			}
+			
 			target.questionsBefore.add(b);
+			downvoteMemory.put(uid, target);
 		}
 		for (SummaryEntry a : after) {
 			String uid = a.userId;
@@ -553,62 +559,69 @@ public class DownvoteTracker extends JFrame {
 				target.questionsAfter.add(a);
 			}
 		}
-		int[] diffDownvoteGiver = { -1, -2, -3, -4, 9, 7, 5, 19, 18, 17, 16, 29, 28, 27, 26  };
-		int[] diffDownvoteReceiver = { -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 28, 26, 24 };
+		int[] diffDownvoteGiver = { -1, -3, -5, -7, 9, 7, 5, 3, 19, 17, 13,  29, 27, 25, 23, 39, 37, 35, 33, 49, 47, 45, 43  };
+		int[] diffDownvoteReceiver = { -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 12, 28, 26, 24, 22, 38, 36, 34, 32, 48, 46, 44, 42 };
 		// filter those records from users who did not appear after - no diff there
 		for (DownvoteTarget dt : new ArrayList<DownvoteTarget>(users.values())) {
 			if (dt.repAfter == 0) {
 				users.remove(dt.id);
-			} else {
-				int diff = dt.repAfter - dt.repBefore;
-				if (diff == 0) {
-					users.remove(dt.id);
+				// try to remember further
+				dt = downvoteMemory.get(dt.id);
+				// if never seen, continue
+				if (dt == null) {
 					continue;
 				}
-				// check if the there was an odd/even transition
-				if (Math.abs(diff) % 2 == 1) {
-					for (int g : diffDownvoteGiver) {
-						if (diff == g) {
-							dt.isGiver = true;
-							if (debug) {
-								System.out.printf("GIVER: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-							}
-							break;
+			}
+			downvoteMemory.put(dt.id, dt);
+			int diff = dt.repAfter - dt.repBefore;
+			if (diff == 0) {
+				users.remove(dt.id);
+				continue;
+			}
+			// check if the there was an odd/even transition
+			if (Math.abs(diff) % 2 == 1) {
+				for (int g : diffDownvoteGiver) {
+					if (diff == g) {
+						dt.isGiver = true;
+						if (debug) {
+							System.out.printf("GIVER: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
 						}
-					}
-					for (int r : diffDownvoteReceiver) {
-						if (diff == r) {
-							dt.isReceiver = true;
-							if (debug) {
-								System.out.printf("RECVR: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-							}
-							break;
-						}
+						break;
 					}
 				}
-				// now retry for the even changes
-				if (!dt.isGiver && !dt.isReceiver) {
-					for (int g : diffDownvoteGiver) {
-						if (diff == g) {
-							dt.isGiver = true;
-							if (debug) {
-								System.out.printf("GIVER*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-							}
-							break;
+				for (int r : diffDownvoteReceiver) {
+					if (diff == r) {
+						dt.isReceiver = true;
+						if (debug) {
+							System.out.printf("RECVR: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
 						}
+						break;
 					}
-					for (int r : diffDownvoteReceiver) {
-						if (diff == r) {
-							dt.isReceiver = true;
-							if (debug) {
-								System.out.printf("RECVR*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-							}
-							break;
+				}
+			}
+			// now retry for the even changes
+			if (!dt.isGiver && !dt.isReceiver) {
+				for (int g : diffDownvoteGiver) {
+					if (diff == g) {
+						dt.isGiver = true;
+						if (debug) {
+							System.out.printf("GIVER*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
 						}
+						break;
+					}
+				}
+				for (int r : diffDownvoteReceiver) {
+					if (diff == r) {
+						dt.isReceiver = true;
+						if (debug) {
+							System.out.printf("RECVR*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
+						}
+						break;
 					}
 				}
 			}
 		}
+		userMemorySize = downvoteMemory.size();
 		return new ArrayList<DownvoteTarget>(users.values());
 	}
 	/**

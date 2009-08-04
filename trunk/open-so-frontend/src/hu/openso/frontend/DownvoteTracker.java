@@ -26,7 +26,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.imageio.ImageIO;
 import javax.swing.GroupLayout;
@@ -58,6 +61,7 @@ public class DownvoteTracker extends JFrame {
 	private static final int SLEEP_BETWEEN_PAGES = 1000;
 	/** Constant for how many subsequent pages to load. */
 	private static final int NUMBER_OF_ACTIVE_PAGES = 4;
+	private static final int NUMBER_OF_USER_PAGES = 6;
 	private static final long serialVersionUID = 3094478885868144996L;
 	static class DownvoteTarget {
 		/** The destination site. */
@@ -92,10 +96,10 @@ public class DownvoteTracker extends JFrame {
 		private static final long serialVersionUID = 3274337550983240673L;
 		final List<DownvoteTarget> list = new ArrayList<DownvoteTarget>();
 		String[] colNames = {
-			"Timestamp", "S", "Avatar", "Name", "Before", "After", "Diff", "Recvr", "Giver"	
+			"Timestamp", "Avatar", "Name", "Before", "After", "Diff", "Recvr", "Giver"	
 		};
 		Class<?>[] colClasses = {
-			String.class, ImageIcon.class, ImageIcon.class, String.class, Integer.class, Integer.class,
+			String.class, ImageIcon.class, String.class, Integer.class, Integer.class,
 			Integer.class, ImageIcon.class, ImageIcon.class
 		};
 		@Override
@@ -122,8 +126,6 @@ public class DownvoteTracker extends JFrame {
 			case 0:
 				return sdf.format(new Timestamp(dt.analysisTimestamp));
 			case 1:
-				return fctx.siteIcons.get(dt.site);
-			case 2:
 				ImageIcon aicon = fctx.avatars.get(dt.avatarUrl);
 				if (aicon != null) {
 					return aicon;
@@ -133,17 +135,17 @@ public class DownvoteTracker extends JFrame {
 					doLoadAvatar(dt.avatarUrl);
 				}
 				return null;
-			case 3:
+			case 2:
 				return dt.understood ? dt.name : "<html><font color='red'>" + dt.name;
-			case 4:
+			case 3:
 				return dt.repBefore;
-			case 5:
+			case 4:
 				return dt.repAfter;
-			case 6:
+			case 5:
 				return dt.repAfter - dt.repBefore;
-			case 7:
+			case 6:
 				return dt.isReceiver ? fctx.okay : null;
-			case 8:
+			case 7:
 				return dt.isGiver ? fctx.okay : null;
 			}
 			return null;
@@ -166,6 +168,8 @@ public class DownvoteTracker extends JFrame {
 	List<SummaryEntry> after = new ArrayList<SummaryEntry>();
 	Map<String, DownvoteTarget> downvoteMemory = Collections.synchronizedMap(new HashMap<String, DownvoteTarget>());
 	volatile int userMemorySize;
+	final AtomicInteger activePageCount = new AtomicInteger(0);
+	final AtomicInteger userPageCount = new AtomicInteger(0);
 	private JLabel statusLabel;
 	/**
 	 * Constructor. Initializes the panel.
@@ -315,8 +319,12 @@ public class DownvoteTracker extends JFrame {
 	}
 	/** Update the status label. */
 	protected void updateStatusLabel() {
-		statusLabel.setText(String.format("Entries: %d | Before count: %d | After count: %d | User memory: %d", 
-				model.list.size(), before.size(), after.size(), userMemorySize));
+		statusLabel.setText(String.format("Entries: %d | Before count: %d "
+				+ "| After count: %d | User memory: %d"
+				+ "| Current active page %d | Current user page %d"
+				, model.list.size(), before.size(), after.size(), userMemorySize
+				, activePageCount.get(), userPageCount.get()
+		));
 	}
 	/**
 	 * @param avatarUrl
@@ -493,7 +501,13 @@ public class DownvoteTracker extends JFrame {
 			public void run() {
 				try {
 					out = new ArrayList<SummaryEntry>(beforeSize);
-					loadSummaryEntries(siteStr, tagStr.isEmpty() ? null : tagStr, out);
+					Future<List<SummaryEntry>> active = loadSummaryEntries(siteStr, 
+							tagStr.isEmpty() ? null : tagStr);
+					
+					Future<List<SummaryEntry>> users = getTopUsers(siteStr);
+					
+					out.addAll(active.get());
+					out.addAll(users.get());
 					targets = checkForDownvotes(before, out, false);
 				} catch (Throwable t) {
 					t.printStackTrace();
@@ -515,6 +529,88 @@ public class DownvoteTracker extends JFrame {
 				}
 			}
 		}).execute();
+	}
+	/**
+	 * Returns the top users from the users listings.
+	 * @param site the site
+	 * @param out the output summary entry faked
+	 * @throws IOException
+	 * @throws ParserException
+	 */
+	protected Future<List<SummaryEntry>> getTopUsers(final String site) {
+		userPageCount.set(0);
+		updateStatusLabel();
+		return fctx.exec.submit(
+			new Callable<List<SummaryEntry>>() {
+				@Override
+				public List<SummaryEntry> call() throws Exception {
+					List<SummaryEntry> out = new ArrayList<SummaryEntry>();
+					for (int i = 0; i < NUMBER_OF_USER_PAGES; i++) {
+						userPageCount.set(i);
+						updateStatusLabelEDT();
+						byte[] data = SOPageParsers.getUsers("http://" + site, i);
+						for (BasicUserInfo bui : SOPageParsers.parseUsers(data)) {
+							SummaryEntry se = new SummaryEntry();
+							se.userId = bui.id;
+							se.userName = bui.name;
+							se.userRep = bui.reputation;
+							se.avatarUrl = bui.avatarUrl;
+							se.site = site;
+							out.add(se);
+						}
+						if (i < NUMBER_OF_USER_PAGES - 1) {
+							try {
+								TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
+							} catch (InterruptedException ex) {
+								break;
+							}
+						}
+					}
+					return out;
+				}	
+			}
+		);
+	}
+	protected void updateStatusLabelEDT() {
+		SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				updateStatusLabel();
+			}
+		});
+	}
+	/**
+	 * Load the summary entries of 'active' for the given site and optional tags.
+	 * @param site the site without http://
+	 * @param tags the optional filter tags
+	 * @param out the output list to fill in
+	 * @throws IOException if an error occurs
+	 * @throws ParserException if an error occurs
+	 */
+	public Future<List<SummaryEntry>> loadSummaryEntries(final String site, final String tags) {
+		activePageCount.set(0);
+		updateStatusLabel();
+		return fctx.exec.submit(
+			new Callable<List<SummaryEntry>>() {
+				@Override
+				public List<SummaryEntry> call() throws Exception {
+					List<SummaryEntry> out = new ArrayList<SummaryEntry>();
+					for (int i = 0; i < NUMBER_OF_ACTIVE_PAGES; i++) {
+						activePageCount.set(i);
+						updateStatusLabelEDT();
+						byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, "active", i, 50);
+						out.addAll(SOPageParsers.processMainPage(data));
+						if (i < NUMBER_OF_ACTIVE_PAGES - 1) {
+							try {
+								TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
+							} catch (InterruptedException ex) {
+								break;
+							}
+						}
+					}
+					return out;
+				}
+			});
 	}
 	protected void setRefreshLabel() {
 		refresh.setText(String.format("Refresh (in %ds)", refreshTimeValue));
@@ -623,25 +719,6 @@ public class DownvoteTracker extends JFrame {
 		}
 		userMemorySize = downvoteMemory.size();
 		return new ArrayList<DownvoteTarget>(users.values());
-	}
-	/**
-	 * Load the summary entries of 'active' for the given site and optional tags.
-	 * @param site the site without http://
-	 * @param tags the optional filter tags
-	 * @param out the output list to fill in
-	 * @throws IOException if an error occurs
-	 * @throws ParserException if an error occurs
-	 */
-	public static void loadSummaryEntries(String site, String tags, List<SummaryEntry> out) throws IOException, ParserException {
-		for (int i = 0; i < NUMBER_OF_ACTIVE_PAGES; i++) {
-			byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, "active", i, 50);
-			out.addAll(SOPageParsers.processMainPage(data));
-			try {
-				TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
-			} catch (InterruptedException ex) {
-				break;
-			}
-		}
 	}
 //	public static void main(String[] args) throws Exception {
 //		List<SummaryEntry> before = new ArrayList<SummaryEntry>();

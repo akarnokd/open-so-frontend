@@ -474,17 +474,7 @@ public class SOPageParsers {
 		}
 		Parser html = new Parser(htmlStr);
 		// filter question summaries
-		NodeList lst = html.parse(new NodeFilter() {
-			private static final long serialVersionUID = -4798449277408336566L;
-			@Override
-			public boolean accept(Node node) {
-				if (node instanceof Tag) {
-					Tag t = (Tag)node;
-					return "body".equalsIgnoreCase(t.getTagName());
-				}
-				return false;
-			}
-		});
+		NodeList lst = html.parse(getTagAcceptor("body"));
 		if (lst.size() >= 1) {
 			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -721,20 +711,7 @@ public class SOPageParsers {
 		}
 		Parser html = new Parser(htmlStr);
 		// filter question summaries
-		NodeList lst = html.parse(new NodeFilter() {
-			private static final long serialVersionUID = -3930964184187161561L;
-
-			@Override
-			public boolean accept(Node node) {
-				if (node instanceof Tag) {
-					Tag t = (Tag)node;
-					if (t.getTagName().equalsIgnoreCase("html")) {
-						return true;
-					}
-				}
-				return false;
-			}
-		});
+		NodeList lst = html.parse(getTagAcceptor("html"));
 		if (lst.size() > 0) {
 			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			visitor((Tag)lst.elementAt(0), new Associator() {
@@ -855,5 +832,106 @@ public class SOPageParsers {
 		byte[] data = getAUserData("http://stackoverflow.com", "61158");
 		UserProfile up = parseUserProfileStats(data);
 		System.out.println(up);
+	}
+	/**
+	 * Returns the data from the users listing page.
+	 * @param site the target site
+	 * @param page the user page
+	 * @return the byte data
+	 * @throws IOException
+	 * @throws HttpException
+	 */
+	public static byte[] getUsers(String site, int page) throws IOException, HttpException {
+		HttpClient client = new HttpClient();
+		client.getParams().setParameter(HttpMethodParams.USER_AGENT,
+	     "Mozilla/5.0 (Windows; U; Windows NT 6.1; hu; rv:1.9.1.1) Gecko/20090715 Firefox/3.5.1");		
+		client.getParams().setParameter("Connection", "close");
+		client.getParams().setParameter("Cache-Control", "no-cache");
+		client.getParams().setParameter("Pragma", "no-cache");
+		// TODO if it is superuser, lie us in
+		if (site.contains("superuser.com")) {
+			PostMethod post = new PostMethod(site + "/beta-access");
+			post.setParameter("password", "ewok.adventure");
+			client.executeMethod(post);
+		}		
+		HttpMethod method = new GetMethod(site + "/users?page=" + page);
+		int ret = client.executeMethod(method);
+		if (ret != 200) {
+			System.err.println(ret);
+		}
+		byte[] data = method.getResponseBody();
+		method.releaseConnection();
+		return data;
+	}
+	/**
+	 * Parses the stats page for the public user profile.
+	 * @param data the data which contains
+	 * @return the user profile, returns null if the site is offline or UserProfile.id is null
+	 */
+	public static List<BasicUserInfo> parseUsers(byte[] data) throws ParserException {
+		final List<BasicUserInfo> ups = new ArrayList<BasicUserInfo>();
+		String htmlStr = new String(data, UTF_8);
+		// check for offline indicator
+		if (htmlStr.contains("<title>Offline - ")) {
+			return ups; 
+		}
+		Parser html = new Parser(htmlStr);
+		// filter question summaries
+		NodeList lst = html.parse(new NodeFilter() {
+			private static final long serialVersionUID = -6162280697937343870L;
+
+			@Override
+			public boolean accept(Node node) {
+				if (node instanceof Tag) {
+					Tag t = (Tag)node;
+					if (tagWithAttrContains(t, "div", "class", "user-info" )) {
+						return true;
+					}
+				}
+				return false;
+			}
+		});
+		for (int i = 0; i < lst.size(); i++) {
+			final BasicUserInfo bui = new BasicUserInfo();
+			ups.add(bui);
+			visitor((Tag)lst.elementAt(i), new Associator() {
+				@Override
+				public void associate(Tag t) {
+					if (tagWithAttrStarts(t, "a", "href", "/users/")) {
+						String v = t.getAttribute("href");
+						bui.id = v.substring(7, v.indexOf('/', 8));
+						bui.name = getTextOf(t);
+					} else
+					if (tagWithAttrStarts(t, "img", "src", "http")) {
+						bui.avatarUrl = replaceEntities(t.getAttribute("src"));
+					} else
+					if (tagWithAttrContains(t, "span", "class", "reputation-score")) {
+						bui.reputation = Integer.parseInt(getNumberFrom(t).trim());
+					}
+				}
+			});
+		}
+		return ups;
+	}
+	/**
+	 * Returns a new Tag acceptor.
+	 * @param tagName the tag to check
+	 * @return the node filter
+	 */
+	public static NodeFilter getTagAcceptor(final String tagName) {
+		return new NodeFilter() {
+			private static final long serialVersionUID = -3930964184187161561L;
+
+			@Override
+			public boolean accept(Node node) {
+				if (node instanceof Tag) {
+					Tag t = (Tag)node;
+					if (t.getTagName().equalsIgnoreCase(tagName)) {
+						return true;
+					}
+				}
+				return false;
+			}
+		};
 	}
 }

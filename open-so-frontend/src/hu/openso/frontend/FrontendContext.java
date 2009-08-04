@@ -41,6 +41,8 @@ public class FrontendContext {
 	public ImageIcon go;
 	public ImageIcon more;
 	public ImageIcon warning;
+	/** Icon for new window. */
+	public ImageIcon newwin;
 	public FrontendContext() {
 		rolling = new ImageIcon(getClass().getResource("res/loading.gif"));
 		okay = new ImageIcon(getClass().getResource("res/ok.png"));
@@ -50,6 +52,7 @@ public class FrontendContext {
 		wiki = new ImageIcon(getClass().getResource("res/wiki.png"));
 		go = new ImageIcon(getClass().getResource("res/go.png"));
 		more = new ImageIcon(getClass().getResource("res/more.png"));
+		newwin = new ImageIcon(getClass().getResource("res/newwin.gif"));
 
 		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
 		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));

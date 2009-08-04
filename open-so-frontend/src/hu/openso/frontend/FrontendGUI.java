@@ -14,8 +14,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -31,7 +33,7 @@ import javax.swing.event.ChangeListener;
 
 public class FrontendGUI extends JFrame implements PanelManager {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.70a";
+	static final String version = "0.70b";
 	
 	JTabbedPane listings;
 	/** The main views of the application. */
@@ -47,7 +49,8 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	boolean disableTabChange;
 	protected boolean disableAnswersChange;
 	protected boolean disableUsersChange;
-	private FrontendContext mainQuestionContext;
+	private FrontendContext fctx;
+	final Set<ReputationFloat> repFloats = new LinkedHashSet<ReputationFloat>();
 	public FrontendGUI() {
 		super("Open Stack Overflow Frontend v" + version);
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
@@ -62,13 +65,13 @@ public class FrontendGUI extends JFrame implements PanelManager {
 		} catch (IOException e1) {
 			e1.printStackTrace();
 		}
-		createQuestionContext();
+		createFrontendContext();
 		
 		views = new JTabbedPane();
 		
 		{
 			listings = new JTabbedPane();
-			QuestionPanel p = new QuestionPanel(mainQuestionContext);
+			QuestionPanel p = new QuestionPanel(fctx);
 			listings.insertTab("Questions " + (listings.getTabCount() + 1), null, p, null, listings.getTabCount());
 			TitleWithClose component = new TitleWithClose("Questions " + (listings.getTabCount()), listings, p);
 			p.setTabTitle(component);
@@ -107,7 +110,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 		users = new JTabbedPane();
 		{
 			users = new JTabbedPane();
-			UserPanel upanel = new UserPanel(mainQuestionContext);
+			UserPanel upanel = new UserPanel(fctx);
 			users.insertTab("User " + (users.getTabCount() + 1), null, upanel, null, users.getTabCount());
 			TitleWithClose utitle = new TitleWithClose("User " + (users.getTabCount()), users, upanel);
 			upanel.setTabTitle(utitle);
@@ -148,7 +151,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	protected void doUsersClicked() {
 		if (users.getSelectedComponent() == EMPTY_PANEL_U) {
 			disableUsersChange = true;
-			UserPanel component = new UserPanel(mainQuestionContext);
+			UserPanel component = new UserPanel(fctx);
 			users.insertTab("", null, component, null, users.getTabCount() - 1);
 			TitleWithClose tabComponent = new TitleWithClose("Users " + (users.getTabCount() - 1), users, component);
 			component.setTabTitle(tabComponent);
@@ -176,7 +179,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	protected void doTabClicked() {
 		if (listings.getSelectedComponent() == EMPTY_PANEL_Q) {
 			disableTabChange = true;
-			QuestionPanel component = new QuestionPanel(mainQuestionContext);
+			QuestionPanel component = new QuestionPanel(fctx);
 			listings.insertTab("", null, component, null, listings.getTabCount() - 1);
 			TitleWithClose tabComponent = new TitleWithClose("Questions " + (listings.getTabCount() - 1), listings, component);
 			component.setTabTitle(tabComponent);
@@ -229,7 +232,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 						disableTabChange = true;
 						listings.removeTabAt(0); // remove default tab
 						for (int i = 0; i < panels; i++) {
-							QuestionPanel component = new QuestionPanel(mainQuestionContext);
+							QuestionPanel component = new QuestionPanel(fctx);
 							listings.insertTab("", null, component, null, i);
 							String title = p.getProperty("P" + i + "-Title");
 							if (title == null) {
@@ -271,7 +274,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 						disableUsersChange = true;
 						users.removeTabAt(0); // remove default tab
 						for (int i = 0; i < panels; i++) {
-							UserPanel component = new UserPanel(mainQuestionContext);
+							UserPanel component = new UserPanel(fctx);
 							users.insertTab("", null, component, null, i);
 							String title = p.getProperty("U" + i + "-Title");
 							if (title == null) {
@@ -290,7 +293,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 				if (ignoreCnt != null) {
 					int ic = Integer.parseInt(ignoreCnt);
 					for (int i = 0; i < ic; i++) {
-						mainQuestionContext.globalIgnores.put(p.getProperty("Ignore" + i), p.getProperty("IgnoreTitle" + i));
+						fctx.globalIgnores.put(p.getProperty("Ignore" + i), p.getProperty("IgnoreTitle" + i));
 					}
 				}
 				String wikiCnt = p.getProperty("KnownWikisCount");
@@ -298,7 +301,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 					int ic = Integer.parseInt(wikiCnt);
 					for (int i = 0; i < ic; i++) {
 						String kwv = p.getProperty("KnownWikisValue" + i);
-						mainQuestionContext.knownWikis.put(p.getProperty("KnownWikis" + i), kwv != null ? Boolean.parseBoolean(kwv) : true);
+						fctx.knownWikis.put(p.getProperty("KnownWikis" + i), kwv != null ? Boolean.parseBoolean(kwv) : true);
 					}
 				}
 				String v = p.getProperty("ViewIndex");
@@ -317,6 +320,17 @@ public class FrontendGUI extends JFrame implements PanelManager {
 				if (v != null) {
 					users.setSelectedIndex(Integer.parseInt(v));
 				}
+				// save reputation float parameters
+				String rfc = p.getProperty("RepFloats", Integer.toString(repFloats.size()));
+				if (rfc != null) {
+					int rfci = Integer.parseInt(rfc);
+					for (int i = 0; i < rfci; i++) {
+						ReputationFloat rf = new ReputationFloat(new ReputationPanel(fctx));
+						rf.initPanel(i, p);
+						registerRepFloat(rf);
+						rf.setVisible(true);
+					}
+				}
 			} finally {
 				in.close();
 			}
@@ -327,8 +341,8 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	/**
 	 * @return
 	 */
-	private void createQuestionContext() {
-		mainQuestionContext = new FrontendContext()
+	private void createFrontendContext() {
+		fctx = new FrontendContext()
 		.setPanelManager(this)
 		;
 	}
@@ -375,17 +389,27 @@ public class FrontendGUI extends JFrame implements PanelManager {
 					((UserPanel)c).donePanel(i, p);
 				}
 			}
-			p.setProperty("IgnoreCount", Integer.toString(mainQuestionContext.globalIgnores.size()));
+			p.setProperty("IgnoreCount", Integer.toString(fctx.globalIgnores.size()));
 			int i = 0;
-			for (Map.Entry<String, String> e: mainQuestionContext.globalIgnores.entrySet()) {
+			for (Map.Entry<String, String> e: fctx.globalIgnores.entrySet()) {
 				p.setProperty("Ignore" + i, e.getKey());
 				p.setProperty("IgnoreTitle" + i, e.getValue());
 				i++;
 			}
-			p.setProperty("KnownWikisCount", Integer.toString(mainQuestionContext.knownWikis.size()));
-			for (Map.Entry<String, Boolean> e: mainQuestionContext.knownWikis.entrySet()) {
+			p.setProperty("KnownWikisCount", Integer.toString(fctx.knownWikis.size()));
+			for (Map.Entry<String, Boolean> e: fctx.knownWikis.entrySet()) {
 				p.setProperty("KnownWikis" + i, e.getKey());
 				p.setProperty("KnownWikisValue" + i, Boolean.toString(e.getValue()));
+				i++;
+			}
+			
+			// save reputation float parameters
+			p.setProperty("RepFloats", Integer.toString(repFloats.size()));
+			i = 0;
+			for (ReputationFloat rf : repFloats) {
+				rf.donePanel(i, p);
+				rf.doClose();
+				rf.dispose();
 				i++;
 			}
 			
@@ -407,9 +431,9 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	 * 
 	 */
 	private void doExit() {
-		mainQuestionContext.exec.shutdown();
-		mainQuestionContext.globalIgnoreListGUI.dispose();
-		mainQuestionContext.globalIgnoreListGUI = null;
+		fctx.exec.shutdown();
+		fctx.globalIgnoreListGUI.dispose();
+		fctx.globalIgnoreListGUI = null;
 		doneConfig();
 	}
 	protected void doVersionCheck() {
@@ -451,7 +475,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	 */
 	@Override
 	public void openListingFor(String site, String tag) {
-		QuestionPanel component = new QuestionPanel(mainQuestionContext);
+		QuestionPanel component = new QuestionPanel(fctx);
 		int idx = listings.getTabCount() - 1;
 		listings.insertTab("", null, component, null, idx);
 		TitleWithClose tabTitle = new TitleWithClose("Questions:" + site + "|" +tag, listings, component);
@@ -473,7 +497,7 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	 */
 	@Override
 	public void openUser(String site, String id, String name) {
-		UserPanel component = new UserPanel(mainQuestionContext);
+		UserPanel component = new UserPanel(fctx);
 		int idx = users.getTabCount() - 1;
 		users.insertTab("", null, component, null, idx);
 		String title = null;
@@ -489,5 +513,13 @@ public class FrontendGUI extends JFrame implements PanelManager {
 		users.setSelectedIndex(idx);
 		component.openUser(site, id);
 		component.doRetrieve();
+	}
+	@Override
+	public void registerRepFloat(ReputationFloat rf) {
+		repFloats.add(rf);
+	}
+	@Override
+	public void unregisterRepFloat(ReputationFloat rf) {
+		repFloats.remove(rf);
 	}
 }

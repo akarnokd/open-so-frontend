@@ -1619,11 +1619,11 @@ public class QuestionPanel extends JPanel {
 						if (e.time > m.time) {
 							updated++;
 						} else {
-							// copy read marker if views haven't changed
+							// TODO copy read marker if views haven't changed
 							// could indicate a new favor
-							if (e.views == m.views || !detailUnread.isSelected()) {
+//							if (e.views == m.views || !detailUnread.isSelected()) {
 								e.markRead = m.markRead;
-							}
+//							}
 							e.wiki = m.wiki;
 							e.favored = m.favored;
 //							e.deleted = m.deleted; //?

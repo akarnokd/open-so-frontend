@@ -47,6 +47,7 @@ import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
@@ -123,6 +124,13 @@ public class QuestionPanel extends JPanel {
 	private JTextField findValue;
 	private SwingWorker<Void, Void> wikiSwingWorker;
 	private JPopupMenu wikiTestMenu;
+	@SaveValue
+	JCheckBoxMenuItem detailUnread;
+	/**
+	 * The question listings table model.
+	 * @author karnokd, 2009.08.04.
+	 * @version $Revision 1.0$
+	 */
 	public class QuestionModel extends AbstractTableModel {
 		private static final long serialVersionUID = -898209429130786969L;
 		List<SummaryEntry> questions = new ArrayList<SummaryEntry>();
@@ -928,6 +936,15 @@ public class QuestionPanel extends JPanel {
 				doOpenUserRecent();
 			}
 		});
+		detailUnread = new JCheckBoxMenuItem("Auto-detail unread");
+		detailUnread.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if (detailUnread.isSelected()) {
+					doDetailUnread();
+				}
+			}
+		});
 		
 		menu.add(openQuestion);
 		menu.add(openUser);
@@ -941,6 +958,7 @@ public class QuestionPanel extends JPanel {
 		menu.add(wikiDelTest);
 		menu.add(wikiUntesed);
 		menu.add(wikiDelTestAll);
+		menu.add(detailUnread);
 		menu.addSeparator();
 		menu.add(removeFromList);
 		menu.addSeparator();
@@ -1037,6 +1055,31 @@ public class QuestionPanel extends JPanel {
 			if (((se.wiki == null && !qctx.knownWikis.containsKey(se.site + "/" + se.id)) 
 					|| se.favored == null) 
 					&& !se.deleted) {
+				sites.add(se.site);
+				ids.add(se.id);
+			}
+		}
+		doProcessWikiBackground(sites, ids);
+		
+	}
+	/**
+	 * Detail all unread entries.
+	 */
+	protected void doDetailUnread() {
+		// once
+		if (wikiBackgroundTask.getIcon() != null) {
+			return;
+		}
+		final List<String> sites = new ArrayList<String>();
+		final List<String> ids = new ArrayList<String>();
+		SummaryEntry se0 = getSelectedEntry();
+		// add current to be sure
+		if (se0 != null) {
+			sites.add(se0.site);
+			ids.add(se0.id);
+		}
+		for (SummaryEntry se : model.questions) {
+			if (!se.markRead) {
 				sites.add(se.site);
 				ids.add(se.id);
 			}
@@ -1616,6 +1659,9 @@ public class QuestionPanel extends JPanel {
 				refreshTimer.start();
 			}
 			totalLabel.setText(String.format("Total: %d", model.questions.size()));
+			if (detailUnread.isSelected()) {
+				doDetailUnread();
+			}
 			countUnreadAndSet();
 		}
 	}

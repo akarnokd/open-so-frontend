@@ -426,7 +426,8 @@ public class DownvoteTracker extends JFrame {
 	protected void doOpenUserHere() {
 		DownvoteTarget dt = getSelectedItem();
 		if (dt != null) {
-			fctx.panelManager.openUser(new String[] { dt.site }, new String[] { dt.id }, dt.name);
+			String siteStr = (String)sites.getSelectedItem();
+			fctx.panelManager.openUser(new String[] { siteStr }, new String[] { dt.id }, dt.name);
 		}
 	}
 	/**
@@ -437,7 +438,8 @@ public class DownvoteTracker extends JFrame {
 		if (dt != null) {
 			Desktop d = Desktop.getDesktop();
 			try {
-				d.browse(new URI("http://" + dt.site + "/users/" + dt.id));
+				String siteStr = (String)sites.getSelectedItem();
+				d.browse(new URI("http://" + siteStr + "/users/" + dt.id));
 			} catch (IOException ex) {
 				ex.printStackTrace();
 			} catch (URISyntaxException ex) {
@@ -488,7 +490,7 @@ public class DownvoteTracker extends JFrame {
 				try {
 					out = new ArrayList<SummaryEntry>(beforeSize);
 					loadSummaryEntries(siteStr, tagStr.isEmpty() ? null : tagStr, out);
-					targets = checkForDownvotes(before, out, true);
+					targets = checkForDownvotes(before, out, false);
 				} catch (Throwable t) {
 					t.printStackTrace();
 				}
@@ -551,7 +553,7 @@ public class DownvoteTracker extends JFrame {
 				target.questionsAfter.add(a);
 			}
 		}
-		int[] diffDownvoteGiver = { -1, -2, -3, -4, 9, 8, 7, 6, 19, 18, 17, 16, 29, 28, 27, 26  };
+		int[] diffDownvoteGiver = { -1, -2, -3, -4, 9, 7, 5, 19, 18, 17, 16, 29, 28, 27, 26  };
 		int[] diffDownvoteReceiver = { -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 28, 26, 24 };
 		// filter those records from users who did not appear after - no diff there
 		for (DownvoteTarget dt : new ArrayList<DownvoteTarget>(users.values())) {

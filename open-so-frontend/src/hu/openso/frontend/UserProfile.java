@@ -51,10 +51,12 @@ public class UserProfile implements Serializable {
 	public final Map<String, BadgeEntry> badgeActivity = new HashMap<String, BadgeEntry>();
 	/** The list of user activity. */
 	public final List<Object> activity = new ArrayList<Object>();
-	/** Indicator that the reputation value changed since last seen. */
+	/** Indicator that the reputation value changed since last seen. Keeps its delta until */
 	public int repChanged;
 	/** Mark this profile change as read. */
 	public boolean markRead;
+	/** Indicator that the reputation changed strictly since the last test. */
+	public boolean repChangedStrict;
 	/** Indicator that the badge counts changed since last seen. */
 	public final Map<BadgeLevel, Integer> badgeChanged = new HashMap<BadgeLevel, Integer>();
 	/**

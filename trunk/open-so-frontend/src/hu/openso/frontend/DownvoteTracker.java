@@ -7,15 +7,43 @@
 
 package hu.openso.frontend;
 
+import java.awt.Container;
+import java.awt.Desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import javax.imageio.ImageIO;
+import javax.swing.GroupLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.table.AbstractTableModel;
+
+import org.htmlparser.util.ParserException;
 
 /**
  * GUI for tracking potential downvoteds and downvoters
@@ -23,6 +51,10 @@ import javax.swing.table.AbstractTableModel;
  * @version $Revision 1.0$
  */
 public class DownvoteTracker extends JFrame {
+	/** Constant to sleep between page retrievals. */
+	private static final int SLEEP_BETWEEN_PAGES = 1000;
+	/** Constant for how many subsequent pages to load. */
+	private static final int NUMBER_OF_ACTIVE_PAGES = 4;
 	private static final long serialVersionUID = 3094478885868144996L;
 	static class DownvoteTarget {
 		/** The destination site. */
@@ -54,12 +86,14 @@ public class DownvoteTracker extends JFrame {
 		boolean understood;
 	}
 	class DownvoteModel extends AbstractTableModel {
+		private static final long serialVersionUID = 3274337550983240673L;
 		final List<DownvoteTarget> list = new ArrayList<DownvoteTarget>();
 		String[] colNames = {
-				
+			"Timestamp", "S", "Avatar", "Name", "Before", "After", "Diff", "Recvr", "Giver"	
 		};
 		Class<?>[] colClasses = {
-			
+			String.class, ImageIcon.class, ImageIcon.class, String.class, Integer.class, Integer.class,
+			Integer.class, ImageIcon.class, ImageIcon.class
 		};
 		@Override
 		public Class<?> getColumnClass(int columnIndex) {
@@ -77,17 +111,376 @@ public class DownvoteTracker extends JFrame {
 		public int getRowCount() {
 			return list.size();
 		}
+		SimpleDateFormat sdf = new SimpleDateFormat("'<html>'yyyy-MM-dd' 'HH:mm:ss");
 		@Override
 		public Object getValueAt(int rowIndex, int columnIndex) {
 			DownvoteTarget dt = list.get(rowIndex);
 			switch (columnIndex) {
-			// TODO Auto-generated method stub
+			case 0:
+				return sdf.format(new Timestamp(dt.analysisTimestamp));
+			case 1:
+				return fctx.siteIcons.get(dt.site);
+			case 2:
+				ImageIcon aicon = fctx.avatars.get(dt.avatarUrl);
+				if (aicon != null) {
+					return aicon;
+				}
+				if (!fctx.avatarsLoading.containsKey(dt.avatarUrl)) {
+					fctx.avatarsLoading.put(dt.avatarUrl, dt.avatarUrl);
+					doLoadAvatar(dt.avatarUrl);
+				}
+				return null;
+			case 3:
+				return dt.name;
+			case 4:
+				return dt.repBefore;
+			case 5:
+				return dt.repAfter;
+			case 6:
+				return dt.repAfter - dt.repBefore;
+			case 7:
+				return dt.isReceiver ? fctx.okay : null;
+			case 8:
+				return dt.isGiver ? fctx.okay : null;
 			}
 			return null;
 		}
 	}
 	JTable table;
-	
+	DownvoteModel model;
+	JPopupMenu popup;
+	JLabel siteIcon;
+	JComboBox sites;
+	JTextField tags;
+	JCheckBox refresh;
+	int refreshTimeLimit = 60;
+	int refreshTimeValue;
+	Timer refreshTimer;
+	FrontendContext fctx;
+	JButton go;
+	JButton clear;
+	List<SummaryEntry> before = new ArrayList<SummaryEntry>();
+	List<SummaryEntry> after = new ArrayList<SummaryEntry>();
+	private JLabel statusLabel;
+	/**
+	 * Constructor. Initializes the panel.
+	 * @param fctx
+	 */
+	public DownvoteTracker(FrontendContext fctx) {
+		super("Experimental: Downvote detector");
+		this.fctx = fctx;
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				doClose();
+			}
+		});
+		
+		Container c = getContentPane();
+		GroupLayout gl = new GroupLayout(c);
+		c.setLayout(gl);
+		gl.setAutoCreateContainerGaps(true);
+		gl.setAutoCreateGaps(true);
+		
+		siteIcon = new JLabel(fctx.siteIcons.get("stackoverflow.com"));
+		sites = new JComboBox(new String[] { "stackoverflow.com" , "meta.stackoverflow.com", "serverfault.com", "superuser.com"} );
+		sites.setSelectedIndex(0);
+		sites.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doSiteSelectionChanged();
+			}
+		});
+		tags = new JTextField(20);
+		refresh = new JCheckBox();
+		refresh.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRefreshToggle();
+			}
+		});
+		refreshTimer = new Timer(1000, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doTimerTick();
+			}
+		});
+		
+		go = new JButton(fctx.go);
+		go.setToolTipText("Perform the analysis now");
+		go.addActionListener(new ActionListener() {	
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doAnalysisSteps();
+			}
+		});
+		
+		clear = new JButton(fctx.clear);
+		clear.setToolTipText("Clears the entire analysis table but leaves the 'after' list intact");
+		clear.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doClearTable();
+			}
+		});
+		
+		createPopupMenu();
+		statusLabel = new JLabel();
+		
+		model = new DownvoteModel();
+		table = new JTable(model);
+		table.setAutoCreateRowSorter(true);
+		table.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		table.setRowHeight(32);
+		table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		table.addMouseListener(GUIUtils.getMousePopupAdapter(table, popup));
+		table.setFont(statusLabel.getFont().deriveFont(16.0f));
+		JScrollPane sp = new JScrollPane(table);
+
+		
+		gl.setHorizontalGroup(
+			gl.createParallelGroup()
+			.addGroup(
+				gl.createSequentialGroup()
+				.addComponent(siteIcon, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(sites, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(tags, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(go)
+				.addComponent(clear)
+				.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+			)
+			.addComponent(sp)
+			.addComponent(statusLabel)
+		);
+		gl.setVerticalGroup(
+			gl.createSequentialGroup()
+			.addGroup(
+				gl.createParallelGroup()
+				.addComponent(siteIcon)
+				.addComponent(sites)
+				.addComponent(tags)
+				.addComponent(go, 25, 25, 25)
+				.addComponent(clear)
+				.addComponent(refresh)
+			)
+			.addComponent(sp)
+			.addComponent(statusLabel)
+		);
+		
+		gl.linkSize(SwingUtilities.VERTICAL, siteIcon, sites, tags, refresh, go, clear);
+		
+		refreshTimeValue = refreshTimeLimit;
+		setRefreshLabel();
+		updateStatusLabel();
+		pack();
+	}
+	/** Update the status label. */
+	protected void updateStatusLabel() {
+		statusLabel.setText(String.format("Entries: %d | Before count: %d | After count %d", model.list.size(), before.size(), after.size()));
+	}
+	/**
+	 * @param avatarUrl
+	 */
+	public void doLoadAvatar(final String url) {
+		fctx.exec.submit(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					ImageIcon icon = new ImageIcon(ImageIO.read(new URL(url)));
+					fctx.avatars.put(url, icon);
+					fctx.avatarsLoading.remove(url);
+					model.fireTableRowsUpdated(0, model.list.size() - 1);
+				} catch (IOException ex) {
+					ex.printStackTrace();
+				}
+			}
+		});
+	}
+	/**
+	 * 
+	 */
+	protected void doClearTable() {
+		model.list.clear();
+		model.fireTableDataChanged();
+		updateStatusLabel();
+	}
+	public DownvoteTarget getSelectedItem() {
+		int idx = getSelectedIndex();
+		if (idx >= 0) {
+			return model.list.get(idx);
+		}
+		return null;
+	}
+	public int getSelectedIndex() {
+		int idx = table.getSelectedRow();
+		if (idx >= 0) {
+			return table.convertRowIndexToModel(idx);
+		}
+		return -1;
+	}
+	/**
+	 * 
+	 */
+	protected void doSiteSelectionChanged() {
+		if (sites.getSelectedIndex() >= 0) {
+			siteIcon.setIcon(fctx.siteIcons.get(sites.getSelectedItem()));
+		}
+	}
+	/**
+	 * 
+	 */
+	private void createPopupMenu() {
+		popup = new JPopupMenu();
+		
+		JMenuItem openUser = new JMenuItem("Open user");
+		openUser.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUser();
+			}
+		});
+		JMenuItem openUserHere = new JMenuItem("Open user here");
+		openUserHere.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserHere();
+			}
+		});
+		JMenuItem remove = new JMenuItem("Remove entry");
+		remove.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRemoveEntry();
+			}
+		});
+		JMenuItem autoSize = new JMenuItem("Auto resize columns");
+		autoSize.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doAutoSize();
+			}
+		});
+		
+		popup.add(openUser);
+		popup.add(openUserHere);
+		popup.addSeparator();
+		popup.add(remove);
+		popup.addSeparator();
+		popup.add(autoSize);
+	}
+	/**
+	 * 
+	 */
+	protected void doAutoSize() {
+		GUIUtils.autoResizeColWidth(table, model);
+	}
+	/**
+	 * 
+	 */
+	protected void doRemoveEntry() {
+		int idx = getSelectedIndex();
+		if (idx >= 0) {
+			model.list.remove(idx);
+			model.fireTableRowsDeleted(idx, idx);
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doOpenUserHere() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			fctx.panelManager.openUser(new String[] { dt.site }, new String[] { dt.id }, dt.name);
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doOpenUser() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			Desktop d = Desktop.getDesktop();
+			try {
+				d.browse(new URI("http://" + dt.site + "/users/" + dt.id));
+			} catch (IOException ex) {
+				ex.printStackTrace();
+			} catch (URISyntaxException ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+	/**
+	 * 
+	 */
+	protected void doRefreshToggle() {
+		if (refresh.isSelected()) {
+			refreshTimer.start();
+		} else {
+			refreshTimer.stop();
+		}
+			
+	}
+	/**
+	 * Perform actions on each timer tick: count down next refresh time.
+	 */
+	protected void doTimerTick() {
+		if (refreshTimeValue > 0) {
+			refreshTimeValue--;
+			setRefreshLabel();
+		}
+		if (refreshTimeValue <= 0) {
+			doAnalysisSteps();
+		}
+	}
+	/**
+	 * Perform the differential reputation analysis on the given site settings.
+	 */
+	protected void doAnalysisSteps() {
+		refreshTimer.stop();
+		go.setIcon(fctx.rolling);
+		go.setEnabled(false);
+		before = after; // swap
+		final int beforeSize = before.size() + 50;
+		after = new ArrayList<SummaryEntry>(beforeSize);
+		final String siteStr = (String)sites.getSelectedItem();
+		final String tagStr = tags.getText();
+		GUIUtils.getWorker(new WorkItem() {
+			List<DownvoteTarget> targets;
+			private List<SummaryEntry> out;
+			@Override
+			public void run() {
+				try {
+					out = new ArrayList<SummaryEntry>(beforeSize);
+					loadSummaryEntries(siteStr, tagStr.isEmpty() ? null : tagStr, out);
+					targets = checkForDownvotes(before, out, true);
+				} catch (Throwable t) {
+					t.printStackTrace();
+				}
+			} 
+			
+			@Override
+			public void done() {
+				after.addAll(out);
+				model.list.addAll(targets);
+				model.fireTableDataChanged();
+				go.setIcon(fctx.go);
+				go.setEnabled(true);
+				updateStatusLabel();
+				if (refresh.isSelected()) {
+					refreshTimeValue = refreshTimeLimit;
+					setRefreshLabel();
+					refreshTimer.start();
+				}
+			}
+		}).execute();
+	}
+	protected void setRefreshLabel() {
+		refresh.setText(String.format("Refresh (in %ds)", refreshTimeValue));
+	}
+	public void doClose() {
+		refreshTimer.stop();
+	}
 	/**
 	 * A differentiator algorithm to check for user activity differences based on
 	 * their public listed reputation value
@@ -106,6 +499,7 @@ public class DownvoteTracker extends JFrame {
 				target = new DownvoteTarget();
 				users.put(uid, target);
 				target.id = uid;
+				target.site = b.site;
 				target.name = b.userName;
 				target.repBefore = b.userRep;
 				target.avatarUrl = b.avatarUrl;
@@ -130,6 +524,10 @@ public class DownvoteTracker extends JFrame {
 				users.remove(dt.id);
 			} else {
 				int diff = dt.repAfter - dt.repBefore;
+				if (diff == 0) {
+					users.remove(dt.id);
+					continue;
+				}
 				// check if the there was an odd/even transition
 				if (Math.abs(diff) % 2 == 1) {
 					for (int g : diffDownvoteGiver) {
@@ -176,29 +574,35 @@ public class DownvoteTracker extends JFrame {
 		}
 		return new ArrayList<DownvoteTarget>(users.values());
 	}
-	public static void main(String[] args) throws Exception {
-		List<SummaryEntry> before = new ArrayList<SummaryEntry>();
-		// get 200 of the latest activity
-		for (int i = 0; i < 4; i++) {
-			System.out.printf("Before Page #%d%n", i);
-			byte[] data = SOPageParsers.getQuestionsData("http://stackoverflow.com", null, "active", i, 50);
-			before.addAll(SOPageParsers.processMainPage(data));
-			System.out.printf("Sleep 1 second%n");
-			TimeUnit.SECONDS.sleep(1);
+	/**
+	 * Load the summary entries of 'active' for the given site and optional tags.
+	 * @param site the site without http://
+	 * @param tags the optional filter tags
+	 * @param out the output list to fill in
+	 * @throws IOException if an error occurs
+	 * @throws ParserException if an error occurs
+	 */
+	public static void loadSummaryEntries(String site, String tags, List<SummaryEntry> out) throws IOException, ParserException {
+		for (int i = 0; i < NUMBER_OF_ACTIVE_PAGES; i++) {
+			byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, "active", i, 50);
+			out.addAll(SOPageParsers.processMainPage(data));
+			try {
+				TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
+			} catch (InterruptedException ex) {
+				break;
+			}
 		}
-		System.out.printf("Sleep 1 minute%n");
-		TimeUnit.MINUTES.sleep(1);
-		List<SummaryEntry> after = new ArrayList<SummaryEntry>();
-		for (int i = 0; i < 4; i++) {
-			System.out.printf("After Page #%d%n", i);
-			byte[] data = SOPageParsers.getQuestionsData("http://stackoverflow.com", null, "active", i, 50);
-			after.addAll(SOPageParsers.processMainPage(data));
-			TimeUnit.SECONDS.sleep(1);
-			System.out.printf("Sleep 1 second%n");
-		}
-		System.out.println("---------- Analysis ----------");
-		checkForDownvotes(before, after, true);
-		System.out.println("------------ Done ------------");
-		
 	}
+//	public static void main(String[] args) throws Exception {
+//		List<SummaryEntry> before = new ArrayList<SummaryEntry>();
+//		loadSummaryEntries("stackoverflow.com", null, before);
+//		System.out.printf("Sleep 1 minute%n");
+//		TimeUnit.MINUTES.sleep(1);
+//		List<SummaryEntry> after = new ArrayList<SummaryEntry>();
+//		loadSummaryEntries("stackoverflow.com", null, after);
+//		System.out.println("---------- Analysis ----------");
+//		checkForDownvotes(before, after, true);
+//		System.out.println("------------ Done ------------");
+//		
+//	}
 }

@@ -23,7 +23,7 @@ import javax.swing.ImageIcon;
  */
 public class FrontendContext {
 	public final Map<String, ImageIcon> avatars = new ConcurrentHashMap<String, ImageIcon>();
-	public final Map<String, ImageIcon> avatarsLoading = new ConcurrentHashMap<String, ImageIcon>();
+	public final Map<String, String> avatarsLoading = new ConcurrentHashMap<String, String>();
 	public final Map<String, ImageIcon> siteIcons = new HashMap<String, ImageIcon>();
 	/** Set of known wikis. */
 	public final Map<String, Boolean> knownWikis = new ConcurrentHashMap<String, Boolean>();
@@ -40,7 +40,9 @@ public class FrontendContext {
 	public IgnoreListGUI globalIgnoreListGUI;
 	public ImageIcon go;
 	public ImageIcon more;
+	public ImageIcon clear;
 	public ImageIcon warning;
+	public ImageIcon downvote;
 	/** Icon for new window. */
 	public ImageIcon newwin;
 	public FrontendContext() {
@@ -53,7 +55,9 @@ public class FrontendContext {
 		go = new ImageIcon(getClass().getResource("res/go.png"));
 		more = new ImageIcon(getClass().getResource("res/more.png"));
 		newwin = new ImageIcon(getClass().getResource("res/newwin.gif"));
-
+		clear = new ImageIcon(getClass().getResource("res/clear.png"));
+		downvote = new ImageIcon(getClass().getResource("res/vote-arrow-down-on.png"));
+		
 		siteIcons.put("stackoverflow.com", new ImageIcon(getClass().getResource("res/so.png")));
 		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
 		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));

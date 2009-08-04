@@ -399,7 +399,7 @@ public class QuestionPanel extends JPanel {
 		});
 		table.addKeyListener(new KeyAdapter() {
 			@Override
-			public void keyReleased(KeyEvent e) {
+			public void keyPressed(KeyEvent e) {
 				doKeyPressed(e);
 			}
 		});
@@ -1205,6 +1205,7 @@ public class QuestionPanel extends JPanel {
 			int idx = table.convertRowIndexToModel(table.getSelectedRow());
 			model.questions.remove(idx);
 			model.fireTableRowsDeleted(idx, idx);
+			updateTotalLabel();
 		}
 	}
 	/**
@@ -1662,12 +1663,16 @@ public class QuestionPanel extends JPanel {
 				setRefreshLabel();
 				refreshTimer.start();
 			}
-			totalLabel.setText(String.format("Total: %d", model.questions.size()));
+			updateTotalLabel();
 			if (detailUnread.isSelected()) {
 				doDetailUnread();
 			}
 			countUnreadAndSet();
 		}
+	}
+	/** Update total label with the current amount. */
+	private void updateTotalLabel() {
+		totalLabel.setText(String.format("Total: %d", model.questions.size()));
 	}
 	public SummaryEntry getSelectedEntry() {
 		int idx = table.getSelectedRow();
@@ -1715,5 +1720,6 @@ public class QuestionPanel extends JPanel {
 		model.questions.clear();
 		model.fireTableDataChanged();
 		tabTitle.setUnread(0);
+		updateTotalLabel();
 	}
 }

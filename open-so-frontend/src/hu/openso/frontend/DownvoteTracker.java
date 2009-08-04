@@ -432,6 +432,7 @@ public class DownvoteTracker extends JFrame {
 		if (idx >= 0) {
 			model.list.remove(idx);
 			model.fireTableRowsDeleted(idx, idx);
+			updateStatusLabel();
 		}
 	}
 	/**
@@ -648,6 +649,9 @@ public class DownvoteTracker extends JFrame {
 				target.repBefore = b.userRep;
 				target.avatarUrl = b.avatarUrl;
 				target.analysisTimestamp = analysisTimestamp;
+			} else {
+				// if the user page contains a more accurate value.
+				target.repBefore = b.userRep;
 			}
 			
 			target.questionsBefore.add(b);

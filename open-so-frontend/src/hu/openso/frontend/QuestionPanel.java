@@ -130,13 +130,13 @@ public class QuestionPanel extends JPanel {
 			ImageIcon.class, ImageIcon.class, ImageIcon.class, String.class,
 			Integer.class, Integer.class, Integer.class, String.class, String.class, 
 			ImageIcon.class, String.class, Integer.class, String.class,
-			String.class
+			String.class, Integer.class
 		};
 		String[] columnNames = {
 			"S", "A", "W", "B",
 			"Votes", "Answers", "Views", "Question", "Time",
 			"Avatar", "User", "Rep", "Badges", 
-			"Tags"
+			"Tags", "Fav"
 		};
 		@Override
 		public int getColumnCount() {
@@ -223,6 +223,8 @@ public class QuestionPanel extends JPanel {
 				}
 				tgb.append("<br>&nbsp;");
 				return tgb.toString();
+			case 14:
+				return se.favored;
 			}
 			return null;
 		}
@@ -874,14 +876,14 @@ public class QuestionPanel extends JPanel {
 			}
 		});
 
-		JMenuItem wikiDelTest = new JMenuItem("Test for Wiki/Deleted");
+		JMenuItem wikiDelTest = new JMenuItem("Detail this");
 		wikiDelTest.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				doWikiDelTest();
 			}
 		});
-		JMenuItem wikiDelTestAll = new JMenuItem("Test ALL for Wiki/Deleted");
+		JMenuItem wikiDelTestAll = new JMenuItem("Detail ALL");
 		wikiDelTestAll.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -896,7 +898,7 @@ public class QuestionPanel extends JPanel {
 				doAutowith();
 			}
 		});
-		JMenuItem wikiUntesed = new JMenuItem("Test (?) only for Wiki/Deleted");
+		JMenuItem wikiUntesed = new JMenuItem("Detail (?)");
 		wikiUntesed.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -1032,7 +1034,9 @@ public class QuestionPanel extends JPanel {
 		final List<String> sites = new ArrayList<String>();
 		final List<String> ids = new ArrayList<String>();
 		for (SummaryEntry se : model.questions) {
-			if ((se.wiki == null && !qctx.knownWikis.containsKey(se.site + "/" + se.id)) && !se.deleted) {
+			if (((se.wiki == null && !qctx.knownWikis.containsKey(se.site + "/" + se.id)) 
+					|| se.favored == null) 
+					&& !se.deleted) {
 				sites.add(se.site);
 				ids.add(se.id);
 			}
@@ -1126,6 +1130,7 @@ public class QuestionPanel extends JPanel {
 				for (SummaryEntry se : model.questions) {
 					if (se.site.equals(qe.site) && se.id.equals(id)) {
 						se.wiki = qe.wiki;
+						se.favored = qe.favorite;
 						se.deleted = isDeleted;
 						qctx.knownWikis.put(qe.site + "/" + id, qe.wiki);
 					}
@@ -1573,6 +1578,7 @@ public class QuestionPanel extends JPanel {
 						} else {
 							e.markRead = m.markRead;
 							e.wiki = m.wiki;
+							e.favored = m.favored;
 //							e.deleted = m.deleted; //?
 						}
 						exists = true;

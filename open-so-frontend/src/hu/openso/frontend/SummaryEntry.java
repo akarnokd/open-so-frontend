@@ -31,6 +31,8 @@ class SummaryEntry implements Serializable {
 	public int bounty;
 	public boolean markRead;
 	public boolean deleted;
+	/** Number of detected favor count. */
+	public Integer favored;
 	@Override
 	public String toString() {
 		String result = "<entry>\r\n\t<id>" + id + "</id>\r\n\t<votes>" + votes + 

@@ -282,7 +282,7 @@ public class DownvoteTracker extends JFrame {
 		table.getRowSorter().setSortKeys(Collections.singletonList(new SortKey(0, SortOrder.DESCENDING)));
 		table.addKeyListener(new KeyAdapter() {
 			@Override
-			public void keyReleased(KeyEvent e) {
+			public void keyPressed(KeyEvent e) {
 				doKeyPressed(e);
 			}
 		});

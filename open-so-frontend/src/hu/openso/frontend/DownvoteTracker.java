@@ -16,6 +16,8 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -278,6 +280,12 @@ public class DownvoteTracker extends JFrame {
 		table.getColumnModel().getColumn(0).setPreferredWidth(170);
 		table.getColumnModel().getColumn(2).setPreferredWidth(250);
 		table.getRowSorter().setSortKeys(Collections.singletonList(new SortKey(0, SortOrder.DESCENDING)));
+		table.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyReleased(KeyEvent e) {
+				doKeyPressed(e);
+			}
+		});
 		JScrollPane sp = new JScrollPane(table);
 
 		
@@ -317,6 +325,22 @@ public class DownvoteTracker extends JFrame {
 		updateStatusLabel();
 		doSiteSelectionChanged();
 		pack();
+	}
+	/**
+	 * Delete the selected entry
+	 * @param e
+	 */
+	protected void doKeyPressed(KeyEvent e) {
+		// TODO Auto-generated method stub
+		if (e.getKeyCode() == KeyEvent.VK_DELETE) {
+			int idx = table.getSelectedRow();
+			doRemoveEntry();
+			if (idx < table.getRowCount()) {
+				table.getSelectionModel().setSelectionInterval(idx, idx);
+			} else {
+				table.getSelectionModel().setSelectionInterval(idx - 1, idx - 1);
+			}
+		}
 	}
 	/**
 	 * 

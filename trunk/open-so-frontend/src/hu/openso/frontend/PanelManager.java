@@ -33,4 +33,14 @@ public interface PanelManager {
 	 * @param name the optional display name
 	 */
 	public void openUser(String site, String id, String name);
+	/**
+	 * Register the given reputation float window to auto-save it.
+	 * @param rf the reputation float.
+	 */
+	public void registerRepFloat(ReputationFloat rf);
+	/**
+	 * Unregister the given reputation float window so it is no more autosaved.
+	 * @param rf the reputation float
+	 */
+	public void unregisterRepFloat(ReputationFloat rf);
 }

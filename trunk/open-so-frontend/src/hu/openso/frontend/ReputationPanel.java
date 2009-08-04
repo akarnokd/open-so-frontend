@@ -13,16 +13,23 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
+import java.net.URL;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
@@ -57,7 +64,9 @@ public class ReputationPanel extends JComponent {
 	JCheckBoxMenuItem invertColor;
 	@SaveValue
 	JCheckBoxMenuItem refreshFeedbackToggle;
-
+	protected final Set<ActionListener> onRefreshCompleted = new LinkedHashSet<ActionListener>(); 
+	protected Map<String, ImageIcon> avatarLargeImages = new ConcurrentHashMap<String, ImageIcon>();
+	protected Map<String, String> avatarLargeImagesLoading = new ConcurrentHashMap<String, String>();
 	public ReputationPanel(FrontendContext fctx) {
 		this.fctx = fctx;
 		setOpaque(true);
@@ -96,6 +105,16 @@ public class ReputationPanel extends JComponent {
 
 		addMouseListener(GUIUtils.getMousePopupAdapter(this, repPopup));
 		
+		JMenuItem refreshNow = new JMenuItem("Refresh now");
+		refreshNow.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doRefreshReputation();
+			}
+		});
+		
+		repPopup.add(refreshNow);
+		repPopup.addSeparator();
 		repPopup.add(invertColor);
 		repPopup.add(refreshToggle);
 		repPopup.add(refreshFeedbackToggle);
@@ -127,7 +146,6 @@ public class ReputationPanel extends JComponent {
 		// TODO Auto-generated method stub
 		refreshTimeCount--;
 		if (refreshTimeCount <= 0) {
-			refreshTimer.stop();
 			doRefreshReputation();
 		}
 		repaint();
@@ -137,8 +155,10 @@ public class ReputationPanel extends JComponent {
 	 */
 	private void doRefreshReputation() {
 		boolean once = true;
+		retrieveWip.set(userProfiles.size());
 		for (int i = 0; i < userProfiles.size(); i++) {
 			if (once) {
+				refreshTimer.stop();
 				once = false;
 			}
 			UserProfile up = userProfiles.get(i);
@@ -168,7 +188,9 @@ public class ReputationPanel extends JComponent {
 						if (refreshToggle.isSelected()) {
 							refreshTimeCount = refreshTimeLimit;
 							refreshTimer.start();
+							repaint();
 						}
+						fireOnRefreshCompleted(new ActionEvent(ReputationPanel.this, 0, "OnRefreshCompleted"));
 					}
 				}
 			}).execute();
@@ -250,12 +272,10 @@ public class ReputationPanel extends JComponent {
 	 * @param index the panel index for configuration lookup
 	 * @param p the properties object
 	 */
-	public void initPanel(int index, Properties p) {
+	public void initPanel(String prefix, Properties p) {
 		// XXX init settings
-		GUIUtils.saveLoadValues(this, false, p, "R" + index + "-");
-		if (refreshToggle.isSelected()) {
-			refreshTimer.start();
-		}
+		GUIUtils.saveLoadValues(this, false, p, prefix);
+		startTimersIf();
 	}
 	/**
 	 * Saves the panel settings into the properties object
@@ -263,9 +283,101 @@ public class ReputationPanel extends JComponent {
 	 * @param index the panel index for configuration lookup
 	 * @param p the properties object
 	 */
-	public void donePanel(int index, Properties p) {
+	public void donePanel(String prefix, Properties p) {
 		// XXX save settings
-		GUIUtils.saveLoadValues(this, true, p, "R" + index + "-");
+		GUIUtils.saveLoadValues(this, true, p, prefix);
+		stopTimers();
+	}
+	/**
+	 * Add listener for the on refresh completed event.
+	 * @param a the action listener, nulls ignored
+	 */
+	public void addOnRefreshCompleted(ActionListener a) {
+		if (a != null) {
+			onRefreshCompleted.add(a);
+		}
+	}
+	/**
+	 * Remove listener for the on refresh completed event.
+	 * @param a the action listener to remove
+	 */
+	public void removeOnRefreshCompleted(ActionListener a) {
+		onRefreshCompleted.remove(a);
+	}
+	/**
+	 * Fire the on refresh completed event.
+	 * @param ae the action event
+	 */
+	protected void fireOnRefreshCompleted(ActionEvent ae) {
+		for (ActionListener al : onRefreshCompleted) {
+			al.actionPerformed(ae);
+		}
+	}
+	/**
+	 * Retrieves the user's avatar in the background.
+	 * @param avatarUrl the URL to the avatar
+	 * @param avatar the target label to set its icon
+	 * @param resize the optional size parameter to resize the image
+	 */
+	public void getUserAvatar(final String avatarUrl, final JLabel avatar, final Integer resize) {
+		ImageIcon ic = avatarLargeImages.get(avatarUrl);
+		if (ic != null) {
+			if (resize != null) {
+				int ns = resize;
+				Image img = ic.getImage();
+				BufferedImage bimg = new BufferedImage(ns, ns, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g2 = bimg.createGraphics();
+				g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+				g2.drawImage(img, 0, 0, ns, ns, null);
+				g2.dispose();
+				avatar.setIcon(new ImageIcon(bimg));
+			} else {
+				avatar.setIcon(ic);
+			}
+			return;
+		}
+		if (avatarLargeImagesLoading.containsKey(avatarUrl)) {
+			return;
+		}
+		avatar.setIcon(fctx.rolling); // progress indication
+		avatarLargeImagesLoading.put(avatarUrl, avatarUrl);
+		GUIUtils.getWorker(new WorkItem() {
+			ImageIcon icon;
+			@Override
+			public void run() {
+				try {
+					BufferedImage img = ImageIO.read(new URL(avatarUrl));
+					if (resize != null) {
+						int ns = resize;
+						BufferedImage bimg = new BufferedImage(ns, ns, BufferedImage.TYPE_INT_ARGB);
+						Graphics2D g2 = bimg.createGraphics();
+						g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+						g2.drawImage(img, 0, 0, ns, ns, null);
+						g2.dispose();
+						img = bimg;
+					}
+					icon = new ImageIcon(img);
+					avatarLargeImages.put(avatarUrl, icon);
+					avatarLargeImagesLoading.remove(avatarUrl);
+				} catch (Throwable ex) {
+					icon =  fctx.unknown;
+					ex.printStackTrace();
+				}
+			}
+			@Override
+			public void done() {
+				avatar.setIcon(icon);
+			}
+		}).execute();
+	}
+	/** Start refresh timers if they are enabled. */
+	public void startTimersIf() {
+		if (refreshToggle.isSelected()) {
+			refreshTimer.start();
+		}
+	}
+	/** Stop refresh timers. */
+	public void stopTimers() {
 		refreshTimer.stop();
 	}
 }

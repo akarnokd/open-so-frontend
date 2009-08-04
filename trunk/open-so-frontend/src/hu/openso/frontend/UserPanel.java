@@ -20,11 +20,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +30,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.imageio.ImageIO;
 import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -158,6 +155,15 @@ public class UserPanel extends JPanel {
 		
 		repPanel = new ReputationPanel(uctx);
 		
+		JButton openFloat = new JButton(uctx.newwin);
+		openFloat.setToolTipText("Open reputation panel in a floating window");
+		openFloat.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenFloat();
+			}
+		});
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -183,7 +189,11 @@ public class UserPanel extends JPanel {
 						.addComponent(userName, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, Short.MAX_VALUE)
 						.addComponent(setAsTabTitle)
 					)
-					.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+					.addGroup(
+						gl.createSequentialGroup()
+						.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(openFloat)
+					)
 				)
 			)
 		);
@@ -209,7 +219,11 @@ public class UserPanel extends JPanel {
 						.addComponent(userName, 30, 30, 30)
 						.addComponent(setAsTabTitle)
 					)
-					.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+					.addGroup(
+						gl.createParallelGroup()
+						.addComponent(repPanel, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+						.addComponent(openFloat)
+					)
 				)
 			)
 		);
@@ -221,6 +235,18 @@ public class UserPanel extends JPanel {
 		setRefreshLabel();
 		createMenus();
 		avatar.addMouseListener(GUIUtils.getMousePopupAdapter(avatar, avatarMenu));
+	}
+	protected void doOpenFloat() {
+		if (isValidUser()) {
+			ReputationPanel rp2 = new ReputationPanel(uctx);
+			rp2.userProfiles.addAll(repPanel.userProfiles);
+			rp2.invertColor.setSelected(repPanel.invertColor.isSelected());
+			rp2.refreshToggle.setSelected(repPanel.refreshToggle.isSelected());
+			rp2.refreshFeedbackToggle.setSelected(repPanel.refreshFeedbackToggle.isSelected());
+			ReputationFloat rf = new ReputationFloat(rp2);
+			uctx.panelManager.registerRepFloat(rf);
+			rf.setVisible(true);
+		}
 	}
 	/**
 	 * Creates the site boxes for the given groups
@@ -449,7 +475,7 @@ public class UserPanel extends JPanel {
 		if (refresh.isSelected()) {
 			refreshTimer.start();
 		}
-		repPanel.initPanel(index, p);
+		repPanel.initPanel("R" + index + "-", p);
 	}
 	/**
 	 * Saves the panel settings into the properties object
@@ -461,7 +487,7 @@ public class UserPanel extends JPanel {
 		// XXX save settings
 		GUIUtils.saveLoadValues(this, true, p, "U" + index + "-");
 		refreshTimer.stop();
-		repPanel.donePanel(index, p);
+		repPanel.donePanel("R" + index + "-", p);
 	}
 	/**
 	 * Retrieve user data for the site and id.
@@ -490,35 +516,6 @@ public class UserPanel extends JPanel {
 		}
 		userName.setText(upl.name);
 		
-		getUserAvatar(upl.avatarUrl);
-	}
-	/**
-	 * Retrieves the user's avatar in the background.
-	 */
-	protected void getUserAvatar(final String avatarUrl) {
-		ImageIcon ic = avatarLargeImages.get(avatarUrl);
-		if (ic != null) {
-			avatar.setIcon(ic);
-			return;
-		}
-		avatar.setIcon(uctx.rolling); // progress indication
-		GUIUtils.getWorker(new WorkItem() {
-			ImageIcon icon;
-			@Override
-			public void run() {
-				try {
-					BufferedImage img = ImageIO.read(new URL(avatarUrl));
-					icon = new ImageIcon(img);
-					avatarLargeImages.put(avatarUrl, icon);
-				} catch (IOException ex) {
-					icon =  uctx.unknown;
-					ex.printStackTrace();
-				}
-			}
-			@Override
-			public void done() {
-				avatar.setIcon(icon);
-			}
-		}).execute();
+		repPanel.getUserAvatar(upl.avatarUrl, avatar, null);
 	}
 }

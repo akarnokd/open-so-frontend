@@ -14,7 +14,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -523,5 +525,9 @@ public class FrontendGUI extends JFrame implements PanelManager {
 	@Override
 	public void unregisterRepFloat(ReputationFloat rf) {
 		repFloats.remove(rf);
+	}
+	@Override
+	public List<ReputationFloat> getRegisteredReputationFloats() {
+		return new ArrayList<ReputationFloat>(repFloats);
 	}
 }

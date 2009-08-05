@@ -1451,7 +1451,9 @@ public class QuestionPanel extends JPanel {
 						idx++;
 						summary.addAll(SOPageParsers.processMainPage(data));
 					}
-					summary.subList(pageSize, summary.size()).clear();
+					if (summary.size() > pageSize) {
+						summary.subList(pageSize, summary.size()).clear();
+					}
 				} catch (Throwable e) {
 					e.printStackTrace();
 				}

@@ -55,5 +55,6 @@ To balance the weight, here I give the owners some hints how to _defeat_ this ki
   * Hide reputation completely from mass listings and use approximate values in the user design to defeat small value change detection
   * Limit the non-logged-in visitors ability to see recent changes - display cached values for longer than 60 seconds.
   * Actively detect frequent polling and use cached images or 404 randomly.
-  * Actively force the user to explain the reason, and if it is already expained by other, auto-link that post/comment for clarity.
+  * Actively force the user to explain the reason, and if it is already expained by other, auto-link that post/comment for clarity. 
+  * Or make it public to the target who did it - we have the right to face our accusers in real life.
   * Have a different <a href="http://meta.stackoverflow.com/questions/7322/should-the-weight-of-downvotes-be-increased/7711#7711">cost model for downvoting</a>.

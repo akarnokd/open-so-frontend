@@ -4,6 +4,7 @@
 package hu.openso.frontend;
 
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -16,6 +17,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Properties;
 
@@ -138,10 +141,18 @@ public class ReputationFloat extends JFrame {
 				repPanel.doOpenUserHere();
 			}
 		});
+		JMenuItem openUserRecent = new JMenuItem("Open user recent");
+		openUserRecent.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserRecent();
+			}
+		});
 		
 		panelMenu.add(mnuMinimize);
 		panelMenu.addSeparator();
 		panelMenu.add(openUser);
+		panelMenu.add(openUserRecent);
 		panelMenu.add(openUserHere);
 		panelMenu.addSeparator();
 		panelMenu.add(mnuClose);
@@ -152,7 +163,16 @@ public class ReputationFloat extends JFrame {
 		MouseAdapter moveAdapter = getMoveAdapter();
 		addMouseListener(moveAdapter);
 		addMouseMotionListener(moveAdapter);
-		
+		addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() > 1) {
+					doOpenUserRecent();
+				}
+				repPanel.doMarkRead(e);
+			}
+		});
+				
 		avatar.addMouseListener(moveAdapter);
 		avatar.addMouseMotionListener(moveAdapter);
 
@@ -164,6 +184,19 @@ public class ReputationFloat extends JFrame {
 		setAlwaysOnTop(true);
 		setSize(859, 58);
 		pack();
+	}
+	/** Opens the user's recent page in the browser. */
+	protected void doOpenUserRecent() {
+		Desktop d = Desktop.getDesktop();
+		try {
+			for (UserProfile up : repPanel.userProfiles) {
+				d.browse(new URI("http://" + up.site + "/users/" + up.id + "?tab=recent#sort-top"));
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} catch (URISyntaxException ex) {
+			ex.printStackTrace();
+		}
 	}
 	private MouseAdapter getMoveAdapter() {
 		return new MouseAdapter() {

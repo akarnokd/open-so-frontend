@@ -100,7 +100,7 @@ public class QuestionPanel extends JPanel {
 	JCheckBox refresh;
 	Timer refreshTimer;
 	int refreshCounter;
-	static final int REFRESH_TIME = 30;
+	static final int REFRESH_TIME = 45;
 	@SaveValue
 	JCheckBox[] siteUrls;
 	@SaveValue

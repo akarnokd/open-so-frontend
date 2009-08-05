@@ -58,7 +58,7 @@ public class ReputationPanel extends JComponent {
 	int awidth = 200;
 	DecimalFormat df = new DecimalFormat("#,###");
 	/** Invert the color scheme? */
-	private int refreshTimeLimit = 30;
+	private int refreshTimeLimit = 65;
 	private int refreshTimeCount;
 	/** The page refresh timer. */
 	private Timer refreshTimer;
@@ -130,6 +130,14 @@ public class ReputationPanel extends JComponent {
 			}
 		});
 		
+		JMenuItem openUserRecent = new JMenuItem("Open user recent");
+		openUserRecent.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenUserRecent();
+			}
+		});
+		
 		JMenuItem openUserHere = new JMenuItem("Open user here");
 		openUserHere.addActionListener(new ActionListener() {
 			@Override
@@ -141,6 +149,7 @@ public class ReputationPanel extends JComponent {
 		repPopup.add(refreshNow);
 		repPopup.addSeparator();
 		repPopup.add(openUser);
+		repPopup.add(openUserRecent);
 		repPopup.add(openUserHere);
 		repPopup.addSeparator();
 		repPopup.add(invertColor);
@@ -158,6 +167,9 @@ public class ReputationPanel extends JComponent {
 		addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
+				if (e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() > 1) {
+					doOpenUserRecent();
+				}
 				doMarkRead(e);
 			}
 		});
@@ -187,11 +199,25 @@ public class ReputationPanel extends JComponent {
 			ex.printStackTrace();
 		}
 	}
+	/** Opens the user's recent page in the browser. */
+	protected void doOpenUserRecent() {
+		Desktop d = Desktop.getDesktop();
+		try {
+			for (UserProfile up : userProfiles) {
+				d.browse(new URI("http://" + up.site + "/users/" + up.id + "?tab=recent#sort-top"));
+			}
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		} catch (URISyntaxException ex) {
+			ex.printStackTrace();
+		}
+	}
 	/** Mark elements as read. */
 	protected void doMarkRead(MouseEvent e) {
 		if (e.getButton() == MouseEvent.BUTTON1) {
 			for (UserProfile up : userProfiles) {
 				up.markRead = true;
+				up.badgeChanged.clear(); // we understood the badge changes too
 			}
 			repaint();
 		}
@@ -352,8 +378,8 @@ public class ReputationPanel extends JComponent {
 				if (up.badgeChanged != null) {
 					bold = up.badgeChanged.get(bgl); 
 				}
-				if (!up.markRead && bold != null && bold != 0) {
-					g2.setColor(bold < 0 ? Color.RED : Color.GREEN);
+				if (!up.markRead && bold != null && bold.intValue() != 0) {
+					g2.setColor(bold.intValue() < 0 ? Color.RED : Color.GREEN);
 				} else {
 					g2.setColor(!invert ? Color.BLACK : Color.WHITE);
 				}

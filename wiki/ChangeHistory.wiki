@@ -1,6 +1,12 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.73 ==
+2009-08-05 08:32Z UTC
+
+  * Added more detectors and configuration options to the [http://code.google.com/p/open-so-frontend/wiki/DownvoteDetection downvote detector]
+  * Several GUI fixes.
+
 == Version 0.72 ==
 2009-08-04 21:00Z UTC
 

@@ -469,6 +469,12 @@ public class DownvoteTracker extends JFrame {
 		if (diff == 12 || diff == 22 || diff == 32 || diff == 42) {
 			reason = "accepted answer + upvotes";
 		} else
+		if (dt.repBefore % 100 == 0 && dt.repAfter % 100 != 0 && Math.abs(diff) > 25) {
+			reason = "you added a repbar?";
+		} else
+		if (dt.repBefore % 100 != 0 && dt.repAfter % 100 == 0 && Math.abs(diff) > 25) {
+			reason = "you removed the repbar?";
+		} else
 		if (Math.abs(diff) % 2 == 1) {
 			reason = "can be a downvoter";
 		} else {

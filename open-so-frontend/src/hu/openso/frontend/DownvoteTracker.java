@@ -108,12 +108,12 @@ public class DownvoteTracker extends JFrame {
 	class DownvoteModel extends AbstractTableModel {
 		private static final long serialVersionUID = 3274337550983240673L;
 		final List<DownvoteTarget> list = new ArrayList<DownvoteTarget>();
-		String[] colNames = {
-			"Timestamp", "Avatar", "Name", "Before", "After", "Diff", "Recvr", "Giver"	
+		final String[] colNames = {
+			"Timestamp", "Avatar", "Name", "Before", "After", "Diff", "Recvr", "Giver", "Analysis"	
 		};
-		Class<?>[] colClasses = {
+		final Class<?>[] colClasses = {
 			String.class, ImageIcon.class, String.class, Integer.class, Integer.class,
-			Integer.class, ImageIcon.class, ImageIcon.class
+			Integer.class, ImageIcon.class, ImageIcon.class, String.class
 		};
 		@Override
 		public Class<?> getColumnClass(int columnIndex) {
@@ -160,6 +160,8 @@ public class DownvoteTracker extends JFrame {
 				return dt.isReceiver ? fctx.okay : null;
 			case 7:
 				return dt.isGiver ? fctx.okay : null;
+			case 8:
+				return explainValue(dt);
 			}
 			return null;
 		}
@@ -215,6 +217,8 @@ public class DownvoteTracker extends JFrame {
 	@SaveValue
 	JTextField useTopTags;
 	private JLabel statusLabel;
+	@SaveValue
+	JCheckBox ignoreTensUp;
 	/**
 	 * Constructor. Initializes the panel.
 	 * @param fctx
@@ -247,6 +251,7 @@ public class DownvoteTracker extends JFrame {
 		});
 		tags = new JTextField(20);
 		refresh = new JCheckBox();
+		refresh.setSelected(true);
 		refresh.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
@@ -303,7 +308,10 @@ public class DownvoteTracker extends JFrame {
 			}
 		});
 		table.getColumnModel().getColumn(0).setPreferredWidth(170);
-		table.getColumnModel().getColumn(2).setPreferredWidth(250);
+		table.getColumnModel().getColumn(2).setPreferredWidth(220);
+		table.getColumnModel().getColumn(6).setPreferredWidth(32);
+		table.getColumnModel().getColumn(7).setPreferredWidth(32);
+		table.getColumnModel().getColumn(8).setPreferredWidth(200);
 		table.getRowSorter().setSortKeys(Collections.singletonList(new SortKey(0, SortOrder.DESCENDING)));
 		table.addKeyListener(new KeyAdapter() {
 			@Override
@@ -326,6 +334,9 @@ public class DownvoteTracker extends JFrame {
 		useTop = new JCheckBox("Use Top30", true);
 		useTopTags = new JTextField(15);
 		
+		ignoreTensUp = new JCheckBox("No x10", true);
+		ignoreTensUp.setToolTipText("Ignore obvious upvotes, e.g. differences of +X times 10.");
+		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
 			.addGroup(
@@ -336,6 +347,7 @@ public class DownvoteTracker extends JFrame {
 				.addComponent(go)
 				.addComponent(clear)
 				.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(ignoreTensUp, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
 			)
 			.addGroup(
 				gl.createSequentialGroup()
@@ -365,6 +377,7 @@ public class DownvoteTracker extends JFrame {
 				.addComponent(go, 25, 25, 25)
 				.addComponent(clear)
 				.addComponent(refresh)
+				.addComponent(ignoreTensUp)
 			)
 			.addGroup(
 				gl.createParallelGroup(Alignment.BASELINE)
@@ -392,6 +405,76 @@ public class DownvoteTracker extends JFrame {
 		updateStatusLabel();
 		doSiteSelectionChanged();
 		pack();
+	}
+	/** The textual description of the potential cause of this change. */
+	public String explainValue(DownvoteTarget dt) {
+		int diff = dt.repAfter - dt.repBefore;
+		String reason = "";
+		if (dt.repAfter % 100 == 0 && Math.abs(diff) % 100 == 0) {
+			reason = ">10k user unknown";
+		} else
+		if (diff < 0 && Math.abs(diff) % 50 == 0) {
+			reason = "bounty started";
+		} else
+		if (diff >= 100 && diff % 50 == 0) {
+			if (diff == 100 || diff == 150 || diff == 200 || diff == 250) {
+				reason = "bounty or half bounty won";
+			} else {
+				reason = "bounty won";
+			}
+		} else 
+		if (diff == 50 || diff == 75 || diff == 125 || diff == 175 || diff == 225 || diff == 275) {
+			reason = "half bounty won";
+		} else
+		if (diff > 0 && diff % 10 == 0) {
+			if (diff == 10) {
+				reason = "Plain upvote";
+			} else {
+				reason = "Simple upvotes";
+			}
+		} else
+		if (diff < 0 && Math.abs(diff) % 10 == 0) {
+			reason = "Upvotes rewoked";
+		} else
+		if (diff == -1 || diff == -3 || diff == -5 || diff == -7) {
+			reason = "obvious downvoter";
+		} else
+		if (diff == -2 || diff == -4 || diff == -6 || diff == -8) {
+			reason = "obvious victim";
+		} else
+		if (diff == -12) {
+			reason = "upvote changed to downvote";
+		} else
+		if (diff == 8 || diff == 18 || diff == 28 || diff == 38 || diff == 48) {
+			reason = "downvoted along with upvote";
+		} else
+		if (diff == -15) {
+			reason = "answer unaccepted";
+		} else
+		if (diff == 5) {
+			reason = "answer unaccepted plus one upvote";
+		} else
+		if (diff == 15) {
+			reason = "answer accepted";
+		} else
+		if (diff >= 25 && diff % 10 == 5) {
+			reason = "answer accepted + upvotes";
+		} else
+		if (diff == 9 || diff == 19 || diff == 29 || diff == 39) {
+			reason = "downvoter along with some received upvotes";
+		} else
+		if (diff == 2 || diff == 4) {
+			reason = "accepted answer";
+		} else
+		if (diff == 12 || diff == 22 || diff == 32 || diff == 42) {
+			reason = "accepted answer + upvotes";
+		} else
+		if (Math.abs(diff) % 2 == 1) {
+			reason = "can be a downvoter";
+		} else {
+			reason = "multiple causes possible";
+		}
+		return reason;
 	}
 	/**
 	 * Delete the selected entry
@@ -703,6 +786,8 @@ public class DownvoteTracker extends JFrame {
 		
 		final boolean useRepBarsFlag = useRepBars.isSelected();
 		
+		final boolean ignoreTenFlag = ignoreTensUp.isSelected();
+		
 		GUIUtils.getWorker(new WorkItem() {
 			List<DownvoteTarget> targets;
 			private List<SummaryEntry> out;
@@ -736,7 +821,7 @@ public class DownvoteTracker extends JFrame {
 					for (Future<List<SummaryEntry>> f : parallels) {
 						out.addAll(f.get());
 					}
-					targets = checkForDownvotes(before, out, false);
+					targets = checkForDownvotes(before, out, ignoreTenFlag);
 				} catch (Throwable t) {
 					t.printStackTrace();
 				}
@@ -890,10 +975,10 @@ public class DownvoteTracker extends JFrame {
 	 * their public listed reputation value
 	 * @param before the list of questions before
 	 * @param after the list of questions after
-	 * @param debug print findings instantly
+	 * @param ignoreTenUp ignore +X*10 kind of changes
 	 */
 	public List<DownvoteTarget> checkForDownvotes(List<SummaryEntry> before, 
-			List<SummaryEntry> after, boolean debug) {
+			List<SummaryEntry> after, boolean ignoreTenUp) {
 		long analysisTimestamp = System.currentTimeMillis();
 		Map<String, DownvoteTarget> users = new HashMap<String, DownvoteTarget>();
 		for (SummaryEntry b : before) {
@@ -940,7 +1025,7 @@ public class DownvoteTracker extends JFrame {
 			}
 			downvoteMemory.put(dt.id, dt);
 			int diff = dt.repAfter - dt.repBefore;
-			if (diff == 0) {
+			if (diff == 0 || (ignoreTenUp && diff > 0 && (diff % 10) == 0)) {
 				users.remove(dt.id);
 				continue;
 			}
@@ -949,18 +1034,12 @@ public class DownvoteTracker extends JFrame {
 				for (int g : diffDownvoteGiver) {
 					if (diff == g) {
 						dt.isGiver = true;
-						if (debug) {
-							System.out.printf("GIVER: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-						}
 						break;
 					}
 				}
 				for (int r : diffDownvoteReceiver) {
 					if (diff == r) {
 						dt.isReceiver = true;
-						if (debug) {
-							System.out.printf("RECVR: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-						}
 						break;
 					}
 				}
@@ -970,18 +1049,12 @@ public class DownvoteTracker extends JFrame {
 				for (int g : diffDownvoteGiver) {
 					if (diff == g) {
 						dt.isGiver = true;
-						if (debug) {
-							System.out.printf("GIVER*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-						}
 						break;
 					}
 				}
 				for (int r : diffDownvoteReceiver) {
 					if (diff == r) {
 						dt.isReceiver = true;
-						if (debug) {
-							System.out.printf("RECVR*: %s (%s) %d -> %d (%d)%n", dt.name, dt.id, dt.repAfter, dt.repBefore, diff);
-						}
 						break;
 					}
 				}

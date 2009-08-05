@@ -35,7 +35,7 @@ import javax.swing.event.ChangeListener;
 
 public class FrontendGUI extends JFrame implements PanelManager {
 	private static final long serialVersionUID = 5676803531378664660L;
-	static final String version = "0.74";
+	static final String version = "0.75";
 	
 	JTabbedPane listings;
 	/** The main views of the application. */

@@ -714,11 +714,13 @@ public class SOPageParsers {
 		NodeList lst = html.parse(getTagAcceptor("html"));
 		if (lst.size() > 0) {
 			final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+			sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
 			visitor((Tag)lst.elementAt(0), new Associator() {
 				String currentTag;
 				BadgeEntry currentBadge;
 				boolean repFound = false;
 				boolean badgeMode = false;
+				boolean lastSeen = false;
 				/** The current reputation entry. */
 				@Override
 				public void associate(Tag t) {
@@ -740,10 +742,13 @@ public class SOPageParsers {
 					if (tagWithAttrEnds(t, "span", "title", "Z UTC")) {
 						String s = t.getAttribute("title");
 						s = s.substring(0, s.lastIndexOf("Z UTC"));
-						try {
-							up.lastSeen = sdf.parse(s).getTime();
-						} catch (ParseException e) {
-							e.printStackTrace();
+						if (!lastSeen) {
+							try {
+								up.lastSeen = sdf.parse(s).getTime();
+							} catch (ParseException e) {
+								e.printStackTrace();
+							}
+							lastSeen = true;
 						}
 					} else
 					if (t.getTagName().equalsIgnoreCase("title")) {

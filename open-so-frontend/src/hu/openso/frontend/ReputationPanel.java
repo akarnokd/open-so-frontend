@@ -25,7 +25,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.sql.Timestamp;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -174,6 +176,35 @@ public class ReputationPanel extends JComponent {
 			}
 		});
 	}
+	/** Set the last seen values as tooltip on this. */
+	protected void setLastSeenValues() {
+		StringBuilder b = new StringBuilder("<html><b>Seen</b>:");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+		int i = 0;
+		int maxSiteLen = 0;
+		for (UserProfile up : userProfiles) {
+			if (up.site.length() > maxSiteLen) {
+				maxSiteLen = up.site.length();
+			}
+		}
+		for (UserProfile up : userProfiles) {
+			b.append("<br>");
+			if (up.lastSeen > 0) {
+				b.append("<font face='Monospaced'>").append(up.site).append(":");
+				int j = up.site.length();
+				for (int k = j; k <= maxSiteLen; k++) {
+					b.append("&nbsp;");
+				}
+				b.append("</font> ").append(sdf.format(new Timestamp(up.lastSeen)));
+			} else {
+				b.append(up.site).append("Unknown");
+			}
+			i++;
+		}
+		b.append("</html>");
+		
+		setToolTipText(b.toString());
+	}
 	protected void doOpenUserHere() {
 		// TODO Auto-generated method stub
 		String[] sites = new String[userProfiles.size()];
@@ -285,6 +316,7 @@ public class ReputationPanel extends JComponent {
 							repaint();
 						}
 						fireOnRefreshCompleted(new ActionEvent(ReputationPanel.this, 0, "OnRefreshCompleted"));
+						setLastSeenValues();
 					}
 				}
 			}).execute();
@@ -413,6 +445,7 @@ public class ReputationPanel extends JComponent {
 		// XXX init settings
 		GUIUtils.saveLoadValues(this, false, p, prefix);
 		startTimersIf();
+		setLastSeenValues();
 	}
 	/**
 	 * Saves the panel settings into the properties object

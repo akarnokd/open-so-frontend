@@ -3,4 +3,18 @@
 
 = Introduction =
 
-Coming soon...
+_For your public eyes only_
+
+Who downvoted me? Question many times asked and asked on meta. Even though now you get a box saying: explain your downvote, I doubt it changed the common user behavior on downvotes.
+
+Me, like other users, don't like to be downvoted (unexplained I might add), so I thought, there should be a way of figuring out who downvoted me!
+
+It turns out there is a way, and luckily, we need only publicly available information to detect that - with a certainty of course. And this publicly and massively available information is:
+
+= User Reputation! =
+
+You remember the rule about if you cast a downvote, you loose 1 rep? Right! If we somehow could detect the numerical change in the reputation value we should be able to detect who was responsible! 
+
+Of course, retrieving current user reputation values is tedious without a program, but hey, we'll always have <strike>Paris</strike> my Frontend, which is excellent at parsing question listings, user profiles (and many more pages later on). 
+
+From there on,

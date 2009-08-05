@@ -926,7 +926,7 @@ public class DownvoteTracker extends JFrame {
 			}
 		}
 		int[] diffDownvoteGiver = { -1, -3, -5, -7, 9, 7, 5, 3, 19, 17, 13,  29, 27, 23, 39, 37, 33, 49, 47, 43  };
-		int[] diffDownvoteReceiver = { -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 12, 28, 26, 24, 22, 38, 36, 34, 32, 48, 46, 44, 42 };
+		int[] diffDownvoteReceiver = {-32, -24, -22, -16, -14, -12, -2, -4, -6, -8, 8, 6, 4, 18, 16, 14, 12, 28, 26, 24, 22, 38, 36, 34, 32, 48, 46, 44, 42 };
 		// filter those records from users who did not appear after - no diff there
 		for (DownvoteTarget dt : new ArrayList<DownvoteTarget>(users.values())) {
 			if (dt.repAfter == 0) {

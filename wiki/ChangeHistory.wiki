@@ -1,6 +1,12 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.74 ==
+2009-08-05 12:24Z UTC
+
+  * Fixed some minor GUI inconsistencies
+  * Added 'Last seen' tooltip to the reputation trackers.
+
 == Version 0.73 ==
 2009-08-05 08:32Z UTC
 

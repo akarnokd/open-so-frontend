@@ -17,4 +17,8 @@ You remember the rule about if you cast a downvote, you loose 1 rep? Right! If w
 
 Of course, retrieving current user reputation values is tedious without a program, but hey, we'll always have <strike>Paris</strike> my Frontend, which is excellent at parsing question listings, user profiles (and many more pages later on). 
 
-From there on,
+From there on, it was easy - in theory. The way of performing differential analysis was easy enough: snapshot current visible values, wait a minute, then snapshot again. Consequently, do a differential analysis and check for reputation changes.
+
+The hard part was to put this entire thing into a GUI - and have proper UI behavior and features. I should add, I still don't feel the 0.74 variant is feature complete - more usability functions are required -  I feel it too when I test the application.
+
+= But there are some drawbacks! =

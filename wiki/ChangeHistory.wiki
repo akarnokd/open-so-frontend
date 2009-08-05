@@ -2,6 +2,12 @@
 #labels Featured
 
 == Version 0.74 ==
+2009-08-05 17:42Z UTC
+
+  * More GUI fixes
+  * Added a description about the potential reputation value change into the detector table with some obvious highlighting.
+
+== Version 0.74 ==
 2009-08-05 12:24Z UTC
 
   * Fixed some minor GUI inconsistencies

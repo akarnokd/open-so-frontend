@@ -22,3 +22,7 @@ From there on, it was easy - in theory. The way of performing differential analy
 The hard part was to put this entire thing into a GUI - and have proper UI behavior and features. I should add, I still don't feel the 0.74 variant is feature complete - more usability functions are required -  I feel it too when I test the application.
 
 = But there are some drawbacks! =
+
+I'm not naive about the fact that my differential algorithm is not 100% safe - there are some strange value change patterns occurring, but I would say, in 80% of the case, there is an obvious -1 and -2 pair of reputation change: the downvoter and the downvoted.
+
+The technology is also in some way abusive - it queries the public listing pages of the target SO sites on every 60 seconds, and for multi-page (e.g. active page) listings, it keeps a 1 second wait between site queries - currently this configuration is hard-coded.

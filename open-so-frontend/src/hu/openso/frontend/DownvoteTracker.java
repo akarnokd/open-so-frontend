@@ -220,7 +220,7 @@ public class DownvoteTracker extends JFrame {
 	 * @param fctx
 	 */
 	public DownvoteTracker(FrontendContext fctx) {
-		super("Experimental: Downvote detector");
+		super("EDD");
 		this.fctx = fctx;
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		addWindowListener(new WindowAdapter() {
@@ -428,7 +428,7 @@ public class DownvoteTracker extends JFrame {
 	 * Sets the window title based on the unread amount.
 	 */
 	private void setWindowTitle() {
-		setTitle(String.format("Experimental Downvote Detector: %s (%d)", sites.getSelectedItem(), getUnreadCount()));
+		setTitle(String.format("EDD: %s (%d)", sites.getSelectedItem(), getUnreadCount()));
 	}
 	void doTablePopupClick(MouseEvent e) {
 		if (e.isPopupTrigger()) {

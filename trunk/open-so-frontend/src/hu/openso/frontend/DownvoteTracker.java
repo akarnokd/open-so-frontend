@@ -55,6 +55,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SortOrder;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import javax.swing.GroupLayout.Alignment;
 import javax.swing.RowSorter.SortKey;
 import javax.swing.table.AbstractTableModel;
 
@@ -70,12 +71,6 @@ public class DownvoteTracker extends JFrame {
 	private static final long serialVersionUID = 3094478885868144996L;
 	/** Constant to sleep between page retrievals. */
 	private static final int SLEEP_BETWEEN_PAGES = 1000;
-	/** Constant for how many subsequent pages to load. */
-	private static final int NUMBER_OF_ACTIVE_PAGES = 4;
-	/** The number of user pages to scan- */
-	private static final int NUMBER_OF_USER_PAGES = 6;
-	/** The number of pages to scan from the newest type. */
-	protected static final int NUMBER_OF_NEWEST_PAGES = 3;
 	/**
 	 * Record to store downvote target information.
 	 * @author karnokd, 2009.08.04.
@@ -173,8 +168,11 @@ public class DownvoteTracker extends JFrame {
 	DownvoteModel model;
 	JPopupMenu popup;
 	JLabel siteIcon;
+	@SaveValue
 	JComboBox sites;
+	@SaveValue
 	JTextField tags;
+	@SaveValue
 	JCheckBox refresh;
 	int refreshTimeLimit = 60;
 	int refreshTimeValue;
@@ -189,6 +187,33 @@ public class DownvoteTracker extends JFrame {
 	final AtomicInteger activePageCount = new AtomicInteger(0);
 	final AtomicInteger userPageCount = new AtomicInteger(0);
 	final AtomicInteger newestPageCount = new AtomicInteger(0);
+	final AtomicInteger hotPageCount = new AtomicInteger(0);
+	@SaveValue
+	JCheckBox useActive;
+	@SaveValue
+	JTextField useActivePages;
+	@SaveValue
+	JCheckBox useHot;
+	@SaveValue
+	JTextField useHotPages;
+	@SaveValue
+	JCheckBox useNewest;
+	@SaveValue
+	JTextField useNewestPages;
+	@SaveValue
+	JCheckBox useUserListings;
+	@SaveValue
+	JTextField useUserListingsStart;
+	@SaveValue
+	JTextField useUserListingsPages;
+	@SaveValue
+	JCheckBox useRepBars;
+	/** Use the user info on the top 30 listings? */
+	@SaveValue
+	JCheckBox useTop;
+	/** Optional Additinoal tags to narrow down users. */
+	@SaveValue
+	JTextField useTopTags;
 	private JLabel statusLabel;
 	/**
 	 * Constructor. Initializes the panel.
@@ -288,6 +313,18 @@ public class DownvoteTracker extends JFrame {
 		});
 		JScrollPane sp = new JScrollPane(table);
 
+		useActive = new JCheckBox("Active", true);
+		useActivePages = new JTextField("4", 2);
+		useHot = new JCheckBox("Hot", true);
+		useHotPages = new JTextField("3", 2);
+		useNewest = new JCheckBox("Newest", true);
+		useNewestPages = new JTextField("4", 2);
+		useUserListings = new JCheckBox("Users", true);
+		useUserListingsStart = new JTextField("1", 3);
+		useUserListingsPages = new JTextField("6", 3);
+		useRepBars = new JCheckBox("Rep-bars", true);
+		useTop = new JCheckBox("Use Top30", true);
+		useTopTags = new JTextField(15);
 		
 		gl.setHorizontalGroup(
 			gl.createParallelGroup()
@@ -300,19 +337,49 @@ public class DownvoteTracker extends JFrame {
 				.addComponent(clear)
 				.addComponent(refresh, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
 			)
+			.addGroup(
+				gl.createSequentialGroup()
+				.addComponent(useActive, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useActivePages, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useHot, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useHotPages, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useNewest, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useNewestPages, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useUserListings, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useUserListingsStart, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useUserListingsPages, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useRepBars, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useTop, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+				.addComponent(useTopTags, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE, GroupLayout.PREFERRED_SIZE)
+			)
 			.addComponent(sp)
 			.addComponent(statusLabel)
 		);
 		gl.setVerticalGroup(
 			gl.createSequentialGroup()
 			.addGroup(
-				gl.createParallelGroup()
+				gl.createParallelGroup(Alignment.BASELINE)
 				.addComponent(siteIcon)
 				.addComponent(sites)
 				.addComponent(tags)
 				.addComponent(go, 25, 25, 25)
 				.addComponent(clear)
 				.addComponent(refresh)
+			)
+			.addGroup(
+				gl.createParallelGroup(Alignment.BASELINE)
+				.addComponent(useActive)
+				.addComponent(useActivePages)
+				.addComponent(useHot)
+				.addComponent(useHotPages)
+				.addComponent(useNewest)
+				.addComponent(useNewestPages)
+				.addComponent(useUserListings)
+				.addComponent(useUserListingsStart)
+				.addComponent(useUserListingsPages)
+				.addComponent(useRepBars)
+				.addComponent(useTop)
+				.addComponent(useTopTags)
 			)
 			.addComponent(sp)
 			.addComponent(statusLabel)
@@ -331,7 +398,6 @@ public class DownvoteTracker extends JFrame {
 	 * @param e
 	 */
 	protected void doKeyPressed(KeyEvent e) {
-		// TODO Auto-generated method stub
 		if (e.getKeyCode() == KeyEvent.VK_DELETE) {
 			int idx = table.getSelectedRow();
 			doRemoveEntry();
@@ -377,9 +443,11 @@ public class DownvoteTracker extends JFrame {
 	protected void updateStatusLabel() {
 		statusLabel.setText(String.format("Entries: %d | Before count: %d "
 				+ "| After count: %d | User memory: %d "
-				+ "| Current active page %d | Current user page %d | Current newest page %d"
+				+ "| Current active page %d | Current user page %d | Current newest page %d "
+				+ "| Current hottest page %d"
 				, model.list.size(), before.size(), after.size(), userMemorySize
 				, activePageCount.get(), userPageCount.get(), newestPageCount.get()
+				, hotPageCount.get()
 		));
 		doSiteSelectionChanged();
 	}
@@ -615,6 +683,26 @@ public class DownvoteTracker extends JFrame {
 		after = new ArrayList<SummaryEntry>(beforeSize);
 		final String siteStr = (String)sites.getSelectedItem();
 		final String tagStr = tags.getText();
+		
+		// get search parameters into finals
+		final boolean useActiveFlag = useActive.isSelected();
+		final int useActivePageCount = Integer.parseInt(useActivePages.getText());
+
+		final boolean useNewestFlag = useNewest.isSelected();
+		final int useNewestPageCount = Integer.parseInt(useNewestPages.getText());
+
+		final boolean useHotFlag = useHot.isSelected();
+		final int useHotPageCount = Integer.parseInt(useHotPages.getText());
+		
+		final boolean useUsersFlag = useUserListings.isSelected();
+		final int userPageStartValue = Integer.parseInt(useUserListingsStart.getText());
+		final int userPageCountValue = Integer.parseInt(useUserListingsPages.getText());
+		
+		final boolean useTop30Flag = useTop.isSelected();
+//		final String[] useTop30Tags = useTopTags.getText().split("\\s+");
+		
+		final boolean useRepBarsFlag = useRepBars.isSelected();
+		
 		GUIUtils.getWorker(new WorkItem() {
 			List<DownvoteTarget> targets;
 			private List<SummaryEntry> out;
@@ -622,17 +710,32 @@ public class DownvoteTracker extends JFrame {
 			public void run() {
 				try {
 					out = new ArrayList<SummaryEntry>(beforeSize);
-					Future<List<SummaryEntry>> active = loadSummaryEntries(siteStr, "active",
-							tagStr.isEmpty() ? null : tagStr, NUMBER_OF_ACTIVE_PAGES, activePageCount);
+					List<Future<List<SummaryEntry>>> parallels = new ArrayList<Future<List<SummaryEntry>>>();
+					if (useActiveFlag) {
+						parallels.add(loadSummaryEntries(siteStr, "active",
+							tagStr.isEmpty() ? null : tagStr, useActivePageCount, activePageCount, 1));
+					}
+					if (useNewestFlag) {
+						parallels.add(loadSummaryEntries(siteStr, "newest",
+								tagStr.isEmpty() ? null : tagStr, useNewestPageCount, newestPageCount, 1)); 
+					}
+					if (useHotFlag) {
+						parallels.add(loadSummaryEntries(siteStr, "hot",
+								tagStr.isEmpty() ? null : tagStr, useHotPageCount, hotPageCount, 1)); 
+					}
+					if (useUsersFlag) {
+						parallels.add(getTopUsers(siteStr, userPageStartValue, userPageCountValue));
+					}
+					if (useTop30Flag) {
+						
+					}
+					if  (useRepBarsFlag) {
+						parallels.add(getRepBarValues(siteStr));
+					}
 					
-					Future<List<SummaryEntry>> newest = loadSummaryEntries(siteStr, "newest",
-							tagStr.isEmpty() ? null : tagStr, NUMBER_OF_NEWEST_PAGES, newestPageCount); 
-					
-					Future<List<SummaryEntry>> users = getTopUsers(siteStr);
-					
-					out.addAll(newest.get());
-					out.addAll(active.get());
-					out.addAll(users.get());
+					for (Future<List<SummaryEntry>> f : parallels) {
+						out.addAll(f.get());
+					}
 					targets = checkForDownvotes(before, out, false);
 				} catch (Throwable t) {
 					t.printStackTrace();
@@ -655,6 +758,43 @@ public class DownvoteTracker extends JFrame {
 			}
 		}).execute();
 	}
+	/** 
+	 * Returns a future to retrieve current values from reputation bars floating around in the application
+	 * @return the future
+	 */
+	protected Future<List<SummaryEntry>> getRepBarValues(final String site) {
+		return fctx.exec.submit(new Callable<List<SummaryEntry>>() {
+			final List<SummaryEntry> result = new ArrayList<SummaryEntry>();
+			@Override
+			public List<SummaryEntry> call() throws Exception {
+				SwingUtilities.invokeAndWait(new Runnable() {
+					@Override
+					public void run() {
+						doInEDT();
+					}
+				});
+				return result;
+			}
+			/** Perform this operation in the EDT. */
+			protected void doInEDT() {
+				for (ReputationFloat repFloat : fctx.panelManager.getRegisteredReputationFloats()) {
+					for (UserProfile up : repFloat.repPanel.userProfiles) {
+						if (up.site.equals(site)) {
+							SummaryEntry se = new SummaryEntry();
+							se.userId = up.id;
+							se.userName = up.name;
+							se.userRep = up.reputation;
+							se.avatarUrl = up.avatarUrl;
+							se.site = site;
+							result.add(se);
+						}
+					}
+					
+				}
+				
+			}
+		});
+	}
 	/**
 	 * Returns the top users from the users listings.
 	 * @param site the site
@@ -662,23 +802,18 @@ public class DownvoteTracker extends JFrame {
 	 * @throws IOException
 	 * @throws ParserException
 	 */
-	protected Future<List<SummaryEntry>> getTopUsers(final String site) {
+	protected Future<List<SummaryEntry>> getTopUsers(final String site, final int startPage, final int pageCount) {
 		userPageCount.set(0);
 		updateStatusLabel();
-		int j = 0;
-		if ("stackoverflow.com".equals(site)) {
-			j = 7; // TODO hack because over 10k there is not enough detail to detect -1 change
-		}
-		final int startpage = j;
 		return fctx.exec.submit(
 			new Callable<List<SummaryEntry>>() {
 				@Override
 				public List<SummaryEntry> call() throws Exception {
 					List<SummaryEntry> out = new ArrayList<SummaryEntry>();
-					for (int i = 0; i < NUMBER_OF_USER_PAGES; i++) {
+					for (int i = 0; i < pageCount; i++) {
 						userPageCount.set(i);
 						updateStatusLabelEDT();
-						byte[] data = SOPageParsers.getUsers("http://" + site, startpage + i);
+						byte[] data = SOPageParsers.getUsers("http://" + site, startPage + i);
 						for (BasicUserInfo bui : SOPageParsers.parseUsers(data)) {
 							SummaryEntry se = new SummaryEntry();
 							se.userId = bui.id;
@@ -688,7 +823,7 @@ public class DownvoteTracker extends JFrame {
 							se.site = site;
 							out.add(se);
 						}
-						if (i < NUMBER_OF_USER_PAGES - 1) {
+						if (i < pageCount - 1) {
 							try {
 								TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
 							} catch (InterruptedException ex) {
@@ -719,7 +854,7 @@ public class DownvoteTracker extends JFrame {
 	 */
 	public Future<List<SummaryEntry>> loadSummaryEntries(final String site, 
 			final String type, final String tags, final int maxPage, 
-			final AtomicInteger counter) {
+			final AtomicInteger counter, final int pageStart) {
 		counter.set(0);
 		updateStatusLabel();
 		return fctx.exec.submit(
@@ -730,9 +865,9 @@ public class DownvoteTracker extends JFrame {
 					for (int i = 0; i < maxPage; i++) {
 						counter.set(i);
 						updateStatusLabelEDT();
-						byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, type, i, 50);
+						byte[] data = SOPageParsers.getQuestionsData("http://" + site, tags, type, pageStart + i, 50);
 						out.addAll(SOPageParsers.processMainPage(data));
-						if (i < NUMBER_OF_ACTIVE_PAGES - 1) {
+						if (i < maxPage - 1) {
 							try {
 								TimeUnit.MILLISECONDS.sleep(SLEEP_BETWEEN_PAGES);
 							} catch (InterruptedException ex) {

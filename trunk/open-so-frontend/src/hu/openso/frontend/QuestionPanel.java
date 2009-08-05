@@ -490,7 +490,7 @@ public class QuestionPanel extends JPanel {
 		
 		pageSize = new JFormattedTextField(15);
 		pageSize.setColumns(3);
-		pageSize.setToolTipText("The page size length between 1 and 50");
+		pageSize.setToolTipText("The page length, can be greater than 50");
 		
 		more = new JButton(qctx.more);
 		more.setToolTipText("Read the Nth page of the selected sites and subpages");
@@ -1418,33 +1418,40 @@ public class QuestionPanel extends JPanel {
 			worker.execute();
 		}
 	}
-	protected SwingWorker<Void, Void> createWorker(final int page,
+	protected SwingWorker<Void, Void> createWorker(final int pageIndex,
 			final String tgs, final String sorts, final String siteStr,
-			final boolean mergeVal, final JLabel statusLabel, final int ps) {
+			final boolean mergeVal, final JLabel statusLabel, final int pageSize) {
 		SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-			List<SummaryEntry> summary = Collections.emptyList();
+			List<SummaryEntry> summary = new ArrayList<SummaryEntry>(pageSize);
 			@Override
 			protected Void doInBackground() throws Exception {
 				try {
-					byte[] data = null;
-					String s1 = sorts.substring(0, sorts.indexOf("-")); 
-					if (sorts.endsWith("-U")) {
-						if (tgs.length() > 0) {
-							String tgs1 = tgs.replaceAll("\\s", "+");
-							data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, page, ps);
+					int remaining = pageSize;
+					int idx = pageIndex;
+					int toread = remaining > 50 ? 50 : remaining;
+					while (remaining > 0) {
+						byte[] data = null;
+						String s1 = sorts.substring(0, sorts.indexOf("-")); 
+						if (sorts.endsWith("-U")) {
+							if (tgs.length() > 0) {
+								String tgs1 = tgs.replaceAll("\\s", "+");
+								data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, idx, toread);
+							} else {
+								data = SOPageParsers.getUnansweredData(siteStr, null, s1, idx, toread);
+							}
 						} else {
-							data = SOPageParsers.getUnansweredData(siteStr, null, s1, page, ps);
+							if (tgs.length() > 0) {
+								String tgs1 = tgs.replaceAll("\\s", "+");
+								data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, idx, toread);
+							} else {
+								data = SOPageParsers.getQuestionsData(siteStr, null, s1, idx, toread);
+							}
 						}
-					} else {
-						if (tgs.length() > 0) {
-							String tgs1 = tgs.replaceAll("\\s", "+");
-							data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, page, ps);
-						} else {
-							data = SOPageParsers.getQuestionsData(siteStr, null, s1, page, ps);
-						}
+						remaining -= toread;
+						idx++;
+						summary.addAll(SOPageParsers.processMainPage(data));
 					}
-					;
-					summary = SOPageParsers.processMainPage(data);
+					summary.subList(pageSize, summary.size()).clear();
 				} catch (Throwable e) {
 					e.printStackTrace();
 				}

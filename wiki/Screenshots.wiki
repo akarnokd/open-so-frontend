@@ -2,7 +2,7 @@
 #labels Featured
 
 = Screenshots =
-
+[http://karnokd.uw.hu/open-so-frontend-75-d.png http://karnokd.uw.hu/open-so-frontend-75-d-tn.png]<br><br>
 [http://karnokd.uw.hu/opensofrontend-mybar.png http://karnokd.uw.hu/opensofrontend-mybar.png]<br><br>
 [http://karnokd.uw.hu/open-so-frontend-74-d.png http://karnokd.uw.hu/open-so-frontend-74-d-tn.png]<br><br>
 [http://karnokd.uw.hu/open-so-frontend-71-d.png http://karnokd.uw.hu/open-so-frontend-71-d-tn.png]<br><br>

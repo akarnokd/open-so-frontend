@@ -439,7 +439,7 @@ public class DownvoteTracker extends JFrame {
 		if (diff == -1 || diff == -3 || diff == -5 || diff == -7) {
 			reason = "<html><font color='white' style='background-color: red;'>obvious downvoter";
 		} else
-		if (diff == -2 || diff == -4 || diff == -6 || diff == -8) {
+		if (diff == -2 || diff == -4 || diff == -6) {
 			reason = "<html><font color='white' style='background-color: blue;'>obvious victim";
 		} else
 		if (diff == -12) {
@@ -645,16 +645,44 @@ public class DownvoteTracker extends JFrame {
 				doOpenUserRecent();
 			}
 		});
+
+		JMenuItem openRepBar = new JMenuItem("Open RepBar");
+		openRepBar.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				doOpenRepBar();
+			}
+		});
 		
 		popup.add(openUser);
 		popup.add(openUserRecent);
 		popup.add(openUserHere);
 		popup.addSeparator();
 		popup.add(copyName);
+		popup.add(openRepBar);
 		popup.addSeparator();
 		popup.add(remove);
 		popup.addSeparator();
 		popup.add(autoSize);
+	}
+	/** Open a reputation bar for the currently selected user and site. */
+	protected void doOpenRepBar() {
+		DownvoteTarget dt = getSelectedItem();
+		if (dt != null) {
+			ReputationPanel rp2 = new ReputationPanel(fctx);
+			UserProfile up = new UserProfile();
+			up.id = dt.id;
+			up.site = (String)sites.getSelectedItem();
+			rp2.userProfiles.add(up);
+			rp2.invertColor.setSelected(false);
+			rp2.refreshToggle.setSelected(true);
+			rp2.refreshFeedbackToggle.setSelected(true);
+			ReputationFloat rf = new ReputationFloat(rp2);
+			fctx.panelManager.registerRepFloat(rf);
+			rp2.doRefreshReputation();
+			rf.setVisible(true);
+		}
+		
 	}
 	/**
 	 * 

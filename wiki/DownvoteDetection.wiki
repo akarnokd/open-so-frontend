@@ -21,6 +21,10 @@ From there on, it was easy - in theory. The way of performing differential analy
 
 The hard part was to put this entire thing into a GUI - and have proper UI behavior and features. I should add, I still don't feel the 0.74 variant is feature complete - more usability functions are required -  I feel it too when I test the application.
 
+== This is data mining! ==
+
+According to my academic colleagues, this activity cannot be called data mining, more like data analysis, aggregation and inference. Data mining involves learning algorithms - mine just remembers.
+
 = But there are some drawbacks! =
 
 I'm not naive about the fact that my differential algorithm is not 100% safe - there are some strange value change patterns occurring, but I would say, in 80% of the case, there is an obvious -1 and -2 pair of reputation change: the downvoter and the downvoted.
@@ -48,4 +52,8 @@ To balance the weight, here I give the owners some hints how to _defeat_ this ki
 
 = Howto design a proper reputation system: from beginners up to horror masters =
 
-* Hide reputation completely from mass listings and use approximate values in the user design to defeat small value changes
+  * Hide reputation completely from mass listings and use approximate values in the user design to defeat small value change detection
+  * Limit the non-logged-in visitors ability to see recent changes - display cached values for longer than 60 seconds.
+  * Actively detect frequent polling and use cached images or 404 randomly.
+  * Actively force the user to explain the reason, and if it is already expained by other, auto-link that post/comment for clarity.
+  * Have a different <a href="http://meta.stackoverflow.com/questions/7322/should-the-weight-of-downvotes-be-increased/7711#7711">cost model for downvoting</a>.

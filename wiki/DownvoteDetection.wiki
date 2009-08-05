@@ -39,3 +39,13 @@ There is one place you can get an exact reputation value: the public User Profil
 The 0.74 has the ability to watch some user's profile in the RepBar - and use this frequently updated information in the detection algorithm - especially if you are suspecting someone hates you (right Rich B?).
 
 Unfortunately, retrieving user profile is slower and has number and frequency limitations.  Just by looking at the server log it becomes obvious: your IP address queries more than one (e.g your own reputation) user profile in a loop. You might get banned, or worse - the site starts to lie to you randomly: the user profile becomes unreliable information source and what not. *BE CAREFUL WHO YOU WATCH. WATCH YOURSELF!*
+
+= This is unethical! =
+
+Yes and no. Watching others is bad, but if nobody forces them to behave nicely and even you start to hate the words {{{by-design}}}, this is your window. But remember the quote: "Who watches the watchers?" - if we had *Transparency*, there were no need for such tricks.
+
+To balance the weight, here I give the owners some hints how to _defeat_ this kind of data aggregation:
+
+= Howto design a proper reputation system: from beginners up to horror masters =
+
+* Hide reputation completely from mass listings and use approximate values in the user design to defeat small value changes

@@ -33,7 +33,7 @@ I should also mention, if you see a pair of rep change, it might not mean they a
 
 = And what about users with rep above 10k =
 
-Good eyes man! This is a very dark spot in face of the algorithm, because these users have most of their reputation display rounded up to thousand. You see 10, 10.1, 10.2 etc., N * 100 jumps! Today (08-05) only the main stackoverflow.com is affected - the other sites have users currently below 10k - but not for long I guess.
+Good eyes man! This is a very dark spot in face of the algorithm, because these users have most of their reputation display rounded up to thousand. You see 10, 10.1, 10.2 etc., N x 100 jumps! Today (08-05) only the main stackoverflow.com is affected - the other sites have users currently below 10k - but not for long I guess.
 
 There is one place you can get an exact reputation value: the public User Profile. Hmm.
 The 0.74 has the ability to watch some user's profile in the RepBar - and use this frequently updated information in the detection algorithm - especially if you are suspecting someone hates you (right Rich B?).

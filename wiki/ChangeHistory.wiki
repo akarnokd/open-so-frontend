@@ -1,6 +1,12 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.76 ==
+2009-08-06 10:46Z UTC
+
+  * Some GUI fixes
+  * Some explanation clarification enhancements
+
 == Version 0.75 ==
 2009-08-05 17:42Z UTC
 

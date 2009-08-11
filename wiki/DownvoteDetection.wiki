@@ -1,6 +1,15 @@
 #summary Description of the implemented downvote detection algorithm
 #labels Featured
 
+= Disclaimer =
+It seems, potentially due my recent test-activity from the EDD, that I have drawn attention to myself and I'm mostly blocked out from the SO sites (e.g. I get blank page everywhere). The current EDD polling pattern is to periodic and to much correlated, and it accesses the public face of the site without logging in. Obviously, the detection algorithm is still valid, proven and working, and if you can create a GreaseMonkey script or other browser plugin, you can do the tracking as you normally browse the site - no suspicious frequent public access from your IP address.
+
+Because I'm locked out, I don't care about my reputation (because I don't know the value) and anyway, I was only vegetating on the sites recently (e.g. few new answers or questions of my interest).
+
+Consequently, as I'm now unable to test any of my improvements to the application, I'm not sure I will continue to develop it further.
+
+Take care - David
+
 = Introduction =
 
 _For your public eyes only_

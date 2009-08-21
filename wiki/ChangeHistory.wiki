@@ -1,6 +1,11 @@
 #summary This page contains the change history of the application
 #labels Featured
 
+== Version 0.77 ==
+2009-08-21 21:07Z
+
+  * Changed the question parser as it seems the question timestamps end with "Z" instead of "Z UTC", causing 1970 to be displayed on all questions due zero timestamp.
+
 == Version 0.76 ==
 2009-08-06 10:46Z UTC
 

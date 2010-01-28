@@ -3,6 +3,7 @@ package hu.openso.frontend;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -95,7 +96,7 @@ public class SOPageParsers {
 		}		
 		HttpMethod method = null;
 		if (tags != null) {
-			method = new GetMethod(site + "/questions/tagged?tagnames=" + tags + "&page=" + page + "&sort=" + sort + "&pagesize=" + ps);
+			method = new GetMethod(site + "/questions/tagged?tagnames=" + URLEncoder.encode(tags, "UTF-8") + "&page=" + page + "&sort=" + sort + "&pagesize=" + ps);
 		} else {
 			method = new GetMethod(site + "/questions?page=" + page + "&sort=" + sort + "&pagesize=" + ps);
 		}
@@ -120,7 +121,7 @@ public class SOPageParsers {
 		}		
 		HttpMethod method = null;
 		if (tags != null) {
-			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + tags + "&page=" + page + "&tab=" + sort + "&pagesize=" + ps);
+			method = new GetMethod(site + "/unanswered/tagged?tagnames=" + URLEncoder.encode(tags, "UTF-8") + "&page=" + page + "&tab=" + sort + "&pagesize=" + ps);
 		} else {
 			method = new GetMethod(site + "/unanswered?page=" + page + "&tab=" + sort + "&pagesize=" + ps);
 		}
@@ -264,7 +265,7 @@ public class SOPageParsers {
 	}
 	protected static boolean testTimestamp(Tag t) {
 		String title = t.getAttribute("title");
-		return title != null && title.endsWith("Z UTC");
+		return title != null && (title.endsWith("Z UTC") || title.endsWith("Z"));
 	}
 	protected static String getTextOf(Tag t) {
 		StringBuilder b = new StringBuilder();

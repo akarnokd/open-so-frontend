@@ -1426,33 +1426,34 @@ public class QuestionPanel extends JPanel {
 			@Override
 			protected Void doInBackground() throws Exception {
 				try {
-					int remaining = pageSize;
-					int idx = pageIndex;
-					int toread = remaining > 50 ? 50 : remaining;
-					while (remaining > 0) {
-						byte[] data = null;
-						String s1 = sorts.substring(0, sorts.indexOf("-")); 
-						if (sorts.endsWith("-U")) {
-							if (tgs.length() > 0) {
-								String tgs1 = tgs.replaceAll("\\s", "+");
-								data = SOPageParsers.getUnansweredData(siteStr, tgs1, s1, idx, toread);
+					String[] alternatives = tgs.split("\\s*\\|\\s*");
+					for (String alternative : alternatives) {
+						int remaining = pageSize;
+						int idx = pageIndex;
+						int toread = remaining > 50 ? 50 : remaining;
+						while (remaining > 0) {
+							byte[] data = null;
+							String s1 = sorts.substring(0, sorts.indexOf("-")); 
+							if (sorts.endsWith("-U")) {
+								if (alternative.length() > 0) {
+									data = SOPageParsers.getUnansweredData(siteStr, alternative, s1, idx, toread);
+								} else {
+									data = SOPageParsers.getUnansweredData(siteStr, null, s1, idx, toread);
+								}
 							} else {
-								data = SOPageParsers.getUnansweredData(siteStr, null, s1, idx, toread);
+								if (alternative.length() > 0) {
+									data = SOPageParsers.getQuestionsData(siteStr, alternative, s1, idx, toread);
+								} else {
+									data = SOPageParsers.getQuestionsData(siteStr, null, s1, idx, toread);
+								}
 							}
-						} else {
-							if (tgs.length() > 0) {
-								String tgs1 = tgs.replaceAll("\\s", "+");
-								data = SOPageParsers.getQuestionsData(siteStr, tgs1, s1, idx, toread);
-							} else {
-								data = SOPageParsers.getQuestionsData(siteStr, null, s1, idx, toread);
-							}
+							remaining -= toread;
+							idx++;
+							summary.addAll(SOPageParsers.processMainPage(data));
 						}
-						remaining -= toread;
-						idx++;
-						summary.addAll(SOPageParsers.processMainPage(data));
-					}
-					if (summary.size() > pageSize) {
-						summary.subList(pageSize, summary.size()).clear();
+						if (summary.size() > pageSize * alternatives.length) {
+							summary.subList(pageSize, summary.size()).clear();
+						}
 					}
 				} catch (Throwable e) {
 					e.printStackTrace();

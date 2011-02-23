@@ -721,14 +721,14 @@ public class SOPageParsers {
 				BadgeEntry currentBadge;
 				boolean repFound = false;
 				boolean badgeMode = false;
-				boolean lastSeen = false;
+//				boolean lastSeen = false;
 				/** The current reputation entry. */
 				@Override
 				public void associate(Tag t) {
 					if (t.getTagName().equalsIgnoreCase("img") && ((Tag)t.getParent()).getTagName().equalsIgnoreCase("td")) {
 						up.avatarUrl = replaceEntities(t.getAttribute("src"));
 					} else
-					if (tagWithAttrContains(t, "div", "class", "summarycount") && !repFound) {
+					if (tagWithAttrContains(t, "span", "class", "summarycount") && !repFound) {
 						String s = getNumberFrom(t).trim();
 						up.reputation = Integer.parseInt(s);
 						repFound = true;
@@ -740,21 +740,25 @@ public class SOPageParsers {
 							up.views = Integer.parseInt(s);
 						}
 					} else
-					if (tagWithAttrEnds(t, "span", "title", "Z UTC")) {
+					if (tagWithAttrEnds(t, "span", "title", "Z")) {
 						String s = t.getAttribute("title");
-						s = s.substring(0, s.lastIndexOf("Z UTC"));
-						if (!lastSeen) {
+						s = s.substring(0, s.lastIndexOf("Z"));
+//						if (!lastSeen) {
 							try {
-								up.lastSeen = sdf.parse(s).getTime();
+								long seenHere = sdf.parse(s).getTime();
+								up.lastSeen = Math.max(up.lastSeen, seenHere);
 							} catch (ParseException e) {
 								e.printStackTrace();
 							}
-							lastSeen = true;
-						}
+//							lastSeen = true;
+//						}
 					} else
 					if (t.getTagName().equalsIgnoreCase("title")) {
 						String s = getTextOf(t).trim();
 						int uend = s.lastIndexOf('-');
+						if (uend < 0) {
+							uend = s.length();
+						}
 						if (s.startsWith("User ")) {
 							up.name = replaceEntities(s.substring(5, uend)).trim();
 						}

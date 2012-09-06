@@ -62,6 +62,7 @@ public class FrontendContext {
 		siteIcons.put("serverfault.com", new ImageIcon(getClass().getResource("res/sf.png")));
 		siteIcons.put("superuser.com", new ImageIcon(getClass().getResource("res/su.png")));
 		siteIcons.put("meta.stackoverflow.com", new ImageIcon(getClass().getResource("res/meta.png")));
+		siteIcons.put("gamedev.stackexchange.com", new ImageIcon(getClass().getResource("res/gamedev.png")));
 		globalIgnoreListGUI = new IgnoreListGUI(globalIgnores);
 		globalIgnoreListGUI.setTitle("Global Ignore List");
 	}

@@ -44,6 +44,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.imageio.ImageIO;
 import javax.swing.DefaultRowSorter;
 import javax.swing.GroupLayout;
+import javax.swing.GroupLayout.Alignment;
+import javax.swing.GroupLayout.ParallelGroup;
+import javax.swing.GroupLayout.SequentialGroup;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -58,15 +61,12 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.RowSorter.SortKey;
 import javax.swing.SortOrder;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.GroupLayout.ParallelGroup;
-import javax.swing.GroupLayout.SequentialGroup;
-import javax.swing.RowSorter.SortKey;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.AbstractTableModel;
@@ -102,7 +102,8 @@ public class QuestionPanel extends JPanel {
 	int refreshCounter;
 	static final int REFRESH_TIME = 45;
 	@SaveValue
-	JCheckBox[] siteUrls;
+	JCheckBox[] siteCheckBoxes;
+	String[] siteURLs;
 	@SaveValue
 	JTextField[] tags;
 	JLabel[] siteIconLabels;
@@ -428,19 +429,30 @@ public class QuestionPanel extends JPanel {
 			}
 		};
 		go.addActionListener(doRetrieveAction);
-		siteUrls = new JCheckBox[] {
-			new JCheckBox("http://stackoverflow.com", true),
-			new JCheckBox("http://meta.stackoverflow.com", false),
-			new JCheckBox("http://serverfault.com", false),
-			new JCheckBox("http://superuser.com", false),
+		siteCheckBoxes = new JCheckBox[] {
+			new JCheckBox("StackOverflow", true),
+			new JCheckBox("Meta", false),
+			new JCheckBox("ServerFault", false),
+			new JCheckBox("SuperUser", false),
+			new JCheckBox("GameDev", false),
 		};
+		siteURLs = new String[] {
+				"http://stackoverflow.com",
+				"http://meta.stackoverflow.com",
+				"http://serverfault.com",
+				"http://superuser.com",
+				"http://gamedev.stackexchange.com",
+		};
+		
 		siteIconLabels  = new JLabel[] {
 			new JLabel(qctx.siteIcons.get("stackoverflow.com")),	
 			new JLabel(qctx.siteIcons.get("meta.stackoverflow.com")),	
 			new JLabel(qctx.siteIcons.get("serverfault.com")),	
-			new JLabel(qctx.siteIcons.get("superuser.com")),	
+			new JLabel(qctx.siteIcons.get("superuser.com")),
+			new JLabel(qctx.siteIcons.get("gamedev.stackexchange.com")),
 		};
 		tags = new JTextField[] {
+			new JTextField(15),
 			new JTextField(15),
 			new JTextField(15),
 			new JTextField(15),
@@ -452,19 +464,22 @@ public class QuestionPanel extends JPanel {
 			new JLabel("", siteIconLabels[1].getIcon(), JLabel.LEFT), 
 			new JLabel("", siteIconLabels[2].getIcon(), JLabel.LEFT),
 			new JLabel("", siteIconLabels[3].getIcon(), JLabel.LEFT),
+			new JLabel("", siteIconLabels[4].getIcon(), JLabel.LEFT),
 		};
 		
 		siteIconLabels[0].setToolTipText("Open Stack Overflow in browser");
 		siteIconLabels[1].setToolTipText("Open Meta Stack Overflow in browser");
 		siteIconLabels[2].setToolTipText("Open Server Fault in browser");
 		siteIconLabels[3].setToolTipText("Open Super User in browser");
+		siteIconLabels[4].setToolTipText("Open Game Development in browser");
+		
 		for (int i = 0; i < status.length; i++) {
 			final int j = i;
 			siteIconLabels[i].addMouseListener(new MouseAdapter() {
 				@Override
 				public void mouseClicked(MouseEvent e) {
 					if (e.getButton() == MouseEvent.BUTTON1) {
-						doOpenSite(siteUrls[j].getText());
+						doOpenSite(siteURLs[j]);
 					}
 				}
 			});
@@ -575,21 +590,21 @@ public class QuestionPanel extends JPanel {
 		findNext.setToolTipText("Find forward");
 		
 		SequentialGroup sg = gl.createSequentialGroup();
-		for (int i = 0; i < siteUrls.length / 2; i++) {
+		for (int i = 0; i < siteCheckBoxes.length / 2; i++) {
 			sg.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
-			sg.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg.addComponent(siteCheckBoxes[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 			sg.addComponent(tags[i], 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 		}
 		SequentialGroup sg1 = gl.createSequentialGroup();
-		for (int i = siteUrls.length / 2; i < siteUrls.length; i++) {
+		for (int i = siteCheckBoxes.length / 2; i < siteCheckBoxes.length; i++) {
 			sg1.addComponent(siteIconLabels[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
-			sg1.addComponent(siteUrls[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
+			sg1.addComponent(siteCheckBoxes[i], GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 			sg1.addComponent(tags[i], 20, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE);
 		}
 		
 		SequentialGroup sg2 = gl.createSequentialGroup();
 		sg2.addComponent(totalLabel);
-		for (int i = 0; i < siteUrls.length; i++) {
+		for (int i = 0; i < siteCheckBoxes.length; i++) {
 			sg2.addComponent(status[i]);
 		}		
 		sg2
@@ -641,21 +656,21 @@ public class QuestionPanel extends JPanel {
 			)
 		);
 		ParallelGroup pg = gl.createParallelGroup(Alignment.BASELINE);
-		for (int i = 0; i < siteUrls.length / 2; i++) {
+		for (int i = 0; i < siteCheckBoxes.length / 2; i++) {
 			pg.addComponent(siteIconLabels[i]);
-			pg.addComponent(siteUrls[i]);
+			pg.addComponent(siteCheckBoxes[i]);
 			pg.addComponent(tags[i]);
 		}
 		ParallelGroup pg1 = gl.createParallelGroup(Alignment.BASELINE);
-		for (int i = siteUrls.length / 2; i < siteUrls.length; i++) {
+		for (int i = siteCheckBoxes.length / 2; i < siteCheckBoxes.length; i++) {
 			pg1.addComponent(siteIconLabels[i]);
-			pg1.addComponent(siteUrls[i]);
+			pg1.addComponent(siteCheckBoxes[i]);
 			pg1.addComponent(tags[i]);
 		}
 		
 		ParallelGroup pg2 = gl.createParallelGroup(Alignment.BASELINE);
 		pg2.addComponent(totalLabel);
-		for (int i = 0; i < siteUrls.length; i++) {
+		for (int i = 0; i < siteCheckBoxes.length; i++) {
 			pg2.addComponent(status[i]);
 		}		
 		pg2
@@ -705,9 +720,9 @@ public class QuestionPanel extends JPanel {
 			)
 		);
 		List<Component> comps = new LinkedList<Component>(Arrays.<Component>asList(sort, go, more, page, pageSize, clear, downVoter));
-		for (int i = 0; i < siteUrls.length; i++) {
+		for (int i = 0; i < siteCheckBoxes.length; i++) {
 			comps.add(siteIconLabels[i]);
-			comps.add(siteUrls[i]);
+			comps.add(siteCheckBoxes[i]);
 			comps.add(tags[i]);
 		}
 		gl.linkSize(SwingConstants.VERTICAL, comps.toArray(new Component[0]));
@@ -1391,8 +1406,8 @@ public class QuestionPanel extends JPanel {
 	protected void doRetrieve(final int page, final int ps) {
 		List<SwingWorker<Void, Void>> workers = new LinkedList<SwingWorker<Void, Void>>();
 		boolean once = true;
-		for (int i = 0; i < siteUrls.length; i++) {
-			JCheckBox cb = siteUrls[i];
+		for (int i = 0; i < siteCheckBoxes.length; i++) {
+			JCheckBox cb = siteCheckBoxes[i];
 			JTextField tf = tags[i];
 			JLabel lbl = status[i];
 			if (cb.isSelected()) {
@@ -1406,7 +1421,7 @@ public class QuestionPanel extends JPanel {
 				
 				final String tgs = tf.getText();
 				final String sorts = (String)sort.getSelectedItem();
-				final String siteStr = cb.getText();
+				final String siteStr = siteURLs[i];
 				final boolean mergeVal = merge.isSelected();
 				SwingWorker<Void, Void> worker = createWorker(page, tgs, sorts,
 						siteStr, mergeVal, lbl, ps);
